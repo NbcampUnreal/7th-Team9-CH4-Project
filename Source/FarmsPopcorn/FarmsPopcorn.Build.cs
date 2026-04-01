@@ -15,8 +15,5 @@ public class FarmsPopcorn : ModuleRules
 			"InputCore",
 			"EnhancedInput"
 		});
-
-		PrivateDependencyModuleNames.AddRange(new string[] {  });
-		
 	}
 }
