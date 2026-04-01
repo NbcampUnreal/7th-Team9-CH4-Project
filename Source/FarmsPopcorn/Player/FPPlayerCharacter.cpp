@@ -2,7 +2,7 @@
 
 AFPPlayerCharacter::AFPPlayerCharacter()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
 }
 
