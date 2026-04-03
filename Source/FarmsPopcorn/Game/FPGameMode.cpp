@@ -120,6 +120,11 @@ void AFPGameMode::CheckAllPlayersReady()
 		StartGameCountdown();
 	}
 }
+
+void AFPGameMode::StartGameCountdown()
+{
+}
+
 void AFPGameMode::ReStarted()
 {
 	

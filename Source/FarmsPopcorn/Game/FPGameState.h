@@ -52,4 +52,6 @@ public:
 	
 #pragma endregion GameState
 	
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
 };
