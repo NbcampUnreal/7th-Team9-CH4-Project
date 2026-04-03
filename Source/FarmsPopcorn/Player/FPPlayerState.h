@@ -15,4 +15,5 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Team")
 	EFPTeamID TeamID = EFPTeamID::None;
 	
+
 };

@@ -15,13 +15,7 @@ public:
 	AFPGameMode();
 	
 	virtual void PostLogin(APlayerController* NewPlayer);
-	
-	UPROPERTY(ReplicatedUsing = OnRep_CustomPlayerName)
-	FString CustomPlayerName;
-	UFUNCTION()
-	void OnRep_CustomPlayerName();
-	UFUNCTION()
-	void OnRep_IsReady();
+
 	
 #pragma region Team & Avatar // 팀 & 아바타
 public:

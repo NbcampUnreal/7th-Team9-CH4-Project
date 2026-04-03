@@ -18,7 +18,7 @@ public:
 	float RemainingTime; 
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "FP|State")
-	bool bAllReady; 
+	bool bAllReady = false; 
 
 	//현재 게임 상태(로비,플레이화면,결과)
 	UPROPERTY(ReplicatedUsing = OnRep_GamePhase, BlueprintReadOnly, Category = "FP|State")
@@ -36,5 +36,20 @@ public:
 	void OnRep_GamePhase();
 	
 #pragma endregion GameStart //게임 시작
+#pragma region Name //캐릭터 이름 설정
+	
+	UFUNCTION()
+	void OnRep_CustomPlayerName();
+	UPROPERTY(ReplicatedUsing = OnRep_CustomPlayerName)
+	FString CustomPlayerName;
+#pragma endregion Name	//캐릭터 이름 설정 끝
+	
+	UFUNCTION()
+	void OnRep_IsReady();
+#pragma region GameState //팀 점수
+	int32 CurrentRedTeamscore = 0;
+	int32 CurrentBlueTeamscore = 0;
+	
+#pragma endregion GameState
 	
 };

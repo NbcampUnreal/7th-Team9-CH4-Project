@@ -14,6 +14,8 @@ void AFPGameMode::PostLogin(APlayerController* NewPlayer)
 	
 	AssignTeam(NewPlayer);
 }
+
+
 //팀인원 파악
 void AFPGameMode::UpdateTeamCounts()
 {
