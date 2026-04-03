@@ -1,4 +1,4 @@
-using UnrealBuildTool;
+﻿using UnrealBuildTool;
 
 public class FarmsPopcorn : ModuleRules
 {
@@ -13,7 +13,13 @@ public class FarmsPopcorn : ModuleRules
 			"CoreUObject",
 			"Engine",
 			"InputCore",
-			"EnhancedInput"
-		});
-	}
+			"EnhancedInput",
+            "OnlineSubsystem",          // 멀티플레이 세션용
+            "OnlineSubsystemUtils"
+        });
+        PublicIncludePaths.AddRange(new string[]
+        {
+            "PopcornRace",  // 헤더 인클루드 경로
+        });
+    }
 }
