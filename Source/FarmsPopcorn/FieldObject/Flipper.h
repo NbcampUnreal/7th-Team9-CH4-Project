@@ -11,11 +11,6 @@ class FARMSPOPCORN_API AFlipper : public AActor
 
 public:
     AFlipper();
-
-protected:
-    virtual void BeginPlay() override;
-
-public:
     virtual void Tick(float DeltaTime) override;
 
     UPROPERTY(VisibleAnywhere, Category = "Components")
@@ -24,28 +19,33 @@ public:
     UPROPERTY(VisibleAnywhere, Category = "Components")
     UStaticMeshComponent* FlipperMesh;
 
-    // 설정값
     UPROPERTY(EditAnywhere, Category = "Settings")
-    float MaxRotationAngle = 90.0f;
+    float MaxRotationAngle = -90.0f;
 
     UPROPERTY(EditAnywhere, Category = "Settings")
-    float OutSpeed = 0.15f;  // 튀어나오는 속도 (0.15초)
+    float OutSpeed = 0.15f;
 
     UPROPERTY(EditAnywhere, Category = "Settings")
-    float StayTime = 0.5f;   // 중간에 멈춰있을 시간 (0.5초)
+    float StayTime = 0.5f;
 
     UPROPERTY(EditAnywhere, Category = "Settings")
-    float InSpeed = 1.0f;    // 다시 들어가는 속도 (1초)
+    float InSpeed = 1.0f;
 
     UPROPERTY(EditAnywhere, Category = "Settings")
-    float CycleInterval = 5.0f;
+    float CycleInterval = 4.0f;
 
     UPROPERTY(EditAnywhere, Category = "Settings")
-    float LaunchStrength = 3000.0f;
+    float BaseLaunchStrength = 4000.0f;
 
 private:
     float ElapsedTime = 0.0f;
 
+    // 날리기 로직 통합
+    void LaunchTarget(AActor* OtherActor);
+
     UFUNCTION()
-    void OnOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+    void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+    UFUNCTION()
+    void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 };
