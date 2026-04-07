@@ -19,7 +19,7 @@ public class FarmsPopcorn : ModuleRules
         });
         PublicIncludePaths.AddRange(new string[]
         {
-            "FarmsPopcorn",  // 헤더 인클루드 경로
+            "PopcornRace",  // 헤더 인클루드 경로
         });
     }
 }
