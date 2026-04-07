@@ -3,6 +3,7 @@
 #include "Components/Image.h"
 #include "Components/VerticalBox.h"
 #include "Components/Button.h"
+#include "Kismet/GameplayStatics.h"
 #include "Engine/Engine.h"
 
 void UFPScoreResultWidget::NativeConstruct()
