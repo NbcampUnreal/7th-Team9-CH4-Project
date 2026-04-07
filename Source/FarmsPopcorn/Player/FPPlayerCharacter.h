@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "Components/BoxComponent.h"
+// 탑 쌓기 감지용 박스 컴포넌트 사용하려면 필요
 #include "FPPlayerCharacter.generated.h"
 
 
@@ -14,63 +16,58 @@ class UInputAction;
 UENUM(BlueprintType)
 enum class EItemType : uint8
 {
-	None        UMETA(DisplayName = "None"),
-	Fan         UMETA(DisplayName = "선풍기"),
-	Magnet      UMETA(DisplayName = "자석"),
-	WaterBalloon UMETA(DisplayName = "물풍선"),
-	SweetPotato UMETA(DisplayName = "고구마"),   // 이중점프
+    None        UMETA(DisplayName = "None"),
+    Fan         UMETA(DisplayName = "선풍기"),
+    Magnet      UMETA(DisplayName = "자석"),
+    WaterBalloon UMETA(DisplayName = "물풍선"),
+    SweetPotato UMETA(DisplayName = "고구마"),   // 이중점프
 };
 
 UCLASS()
 class FARMSPOPCORN_API AFPPlayerCharacter : public ACharacter
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 #pragma region ACharacter Override
 
 public:
-	AFPPlayerCharacter();
+    AFPPlayerCharacter();
 
-	virtual void SetupPlayerInputComponent(
-		UInputComponent* PlayerInputComponent) override;
+    virtual void SetupPlayerInputComponent(
+        UInputComponent* PlayerInputComponent) override;
 
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
-	// 착지 시 점프 카운트 초기화
-	virtual void Landed(const FHitResult& Hit) override;
+    // 착지 시 점프 카운트 초기화
+    virtual void Landed(const FHitResult& Hit) override;
 
 #pragma endregion
 
 #pragma region Components (카메라/스프링암)
 
 public:
-	FORCEINLINE USpringArmComponent* GetSpringArm() const
-	{
-		return SpringArm;
-	}
-	FORCEINLINE UCameraComponent* GetCamera() const
-	{
-		return Camera;
-	}
+    FORCEINLINE USpringArmComponent* GetSpringArm() const
+    {
+        return SpringArm;
+    }
+    FORCEINLINE UCameraComponent* GetCamera() const
+    {
+        return Camera;
+    }
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
-		Category = "PR|Components")
-	TObjectPtr<USpringArmComponent> SpringArm;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "PR|Components")
+    TObjectPtr<USpringArmComponent> SpringArm;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
-		Category = "PR|Components")
-	TObjectPtr<UCameraComponent> Camera;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "PR|Components")
+    TObjectPtr<UCameraComponent> Camera;
 
 #pragma endregion
 
-public:	
-	virtual void Tick(float DeltaTime) override;
-
-	
-
 #pragma region Input (Enhanced Input)
-   
+
 private:
     void HandleMoveInput(const FInputActionValue& InValue);
     void HandleLookInput(const FInputActionValue& InValue);
@@ -173,7 +170,53 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "PR|Character")
     TArray<TObjectPtr<USkeletalMesh>> CharacterMeshes;
 
+    //각 캐릭터 인덱스에 대응하는 애니메이션 블루프린트 클래스 배열
+    UPROPERTY(EditDefaultsOnly, Category = "PR|Character")
+    TArray<TSubclassOf<UAnimInstance>> CharacterAnimClassArray;
+
 #pragma endregion
+
+#pragma region Stack (탑 쌓기)
+
+protected:
+    //머리 위 감지 박스
+    UPROPERTY(EditDefaultsOnly, Category = "FP|Stack")
+    TObjectPtr<UBoxComponent> HeadDetectBox;
+
+    //내 위에 올라간 캐릭터들(여러 명 가능)
+    UPROPERTY(Replicated)
+    TArray<TObjectPtr<AFPPlayerCharacter>> RiderCharacters;
+
+    // 내가 올라탄 캐릭터 (내 아래)
+    UPROPERTY(Replicated)
+    TObjectPtr<AFPPlayerCharacter> MountedCharacter;
+
+public:
+    UFUNCTION(Server, Reliable)
+    void Server_MountOn(AFPPlayerCharacter* UnderCharacter);
+
+    UFUNCTION(Server, Reliable)
+    void Server_Dismount();
+
+private:
+    UFUNCTION()
+    void OnHeadBoxBeginOverlap(
+        UPrimitiveComponent* OverlappedComp,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex,
+        bool bFromSweep,
+        const FHitResult& SweepResult);
+
+    UFUNCTION()
+    void OnHeadBoxEndOverlap(
+        UPrimitiveComponent* OverlappedComp,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex);
+
+#pragma endregion
+
 
     // =========================================================
 #pragma region Network
