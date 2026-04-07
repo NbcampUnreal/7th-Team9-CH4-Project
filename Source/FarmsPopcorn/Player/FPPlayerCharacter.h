@@ -183,4 +183,8 @@ public:
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion
+	
+public:
+	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Name")
+	FString CurrentName;
 };

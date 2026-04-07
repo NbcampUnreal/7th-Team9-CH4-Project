@@ -1,7 +1,5 @@
 #include "Game/FPGameMode.h"
 #include "FPGameState.h"
-#include "Player/FPPlayerController.h"
-#include "Player/FPPlayerCharacter.h"
 #include "Player/FPPlayerState.h"
 
 AFPGameMode::AFPGameMode()
@@ -102,17 +100,7 @@ void AFPGameMode::CheckAllPlayersReady()
 	if (GameState->PlayerArray.IsEmpty()) return;
 
 	bool bAllReady = true;
-
-	//모든 인원의 상태를 확인합니다
-	for (APlayerState* PS : GameState->PlayerArray)
-	{
-		AFPPlayerState* FPPS = Cast<AFPPlayerState>(PS);
-		if (FPPS && !FPPS->bIsReady)
-		{
-			bAllReady = false;
-			break;
-		}
-	}
+	ReadyPlayerCheck(bAllReady);
 	// 전원 준비 완료
 	if (bAllReady)
 	{
@@ -123,12 +111,52 @@ void AFPGameMode::CheckAllPlayersReady()
 
 void AFPGameMode::StartGameCountdown()
 {
+	AFPGameState* GS = GetGameState<AFPGameState>();
+	if (GS)
+	{
+		GS->SetGamePhase(EFPGamePhase::CountDown);
+	}
+	
+	if (CountDownHandle.IsValid())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(CountDownHandle);
+	}
+	GetWorld()->GetTimerManager().SetTimer(
+		CountDownHandle,
+		this,
+		&AFPGameMode::ExecuteMapTravel,
+		3.0f,
+		false
+		);
 }
 
-void AFPGameMode::ReStarted()
+void AFPGameMode::ReadyPlayerCheck(bool Ready)
 {
-	
+	// 플레이어 레디 상태 확인
+	if (GameState)
+	{
+		for (APlayerState* PS : GameState->PlayerArray)
+		{
+			AFPPlayerState* FPPS = Cast<AFPPlayerState>(PS);
+			if (FPPS && !FPPS->bIsReady)
+			{
+				Ready = false;
+				break;
+			}
+		}
+	}
 }
+
+void AFPGameMode::ExecuteMapTravel()
+{
+	UWorld* World = GetWorld();
+	// 게임 
+	if (World)
+	{
+		GetWorld()->ServerTravel("/Game/Maps/InGameMap?listen?Phase=InGame");
+	}
+}
+
 
 void AFPGameMode::SpawnAndPossessRandomAvatar(AController* Player)
 {

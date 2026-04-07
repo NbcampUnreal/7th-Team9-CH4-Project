@@ -12,7 +12,6 @@ class FARMSPOPCORN_API AFPGameMode : public AGameMode
 	GENERATED_BODY()
 	
 public:
-	AFPGameMode();
 	
 	virtual void PostLogin(APlayerController* NewPlayer);
 
@@ -51,13 +50,17 @@ protected:
 	
 #pragma region GameStart // 게임시작
 public:
-	void ReStarted();
 	// 플레이어가  준비되었는지 확인
 	void CheckAllPlayersReady();
 	// 모두 준비되었을 때 게임 시작을 처리
 	void StartGameCountdown();	
-protected:
-	bool BGameStarted = false;
-#pragma endregion GameStart // 게임시작 마지막
+	// 레디 상태확인
+	void ReadyPlayerCheck(bool Ready);
 	
+	
+protected:
+	FTimerHandle CountDownHandle; // 3초를 잴 타이머
+	void ExecuteMapTravel();      // 3초 뒤에 실제로 맵을 넘길 함수
+	
+#pragma endregion GameStart // 게임시작 마지막
 };
