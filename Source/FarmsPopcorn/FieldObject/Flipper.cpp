@@ -4,6 +4,8 @@
 AFlipper::AFlipper()
 {
     PrimaryActorTick.bCanEverTick = true;
+    bReplicates = true;
+    SetReplicateMovement(true);
 
     SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
     RootComponent = SceneRoot;
@@ -23,6 +25,12 @@ void AFlipper::BeginPlay()
 void AFlipper::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
+    
+    //서버만 실행하고, 클라이언트는 실행 안시킴
+    if (!HasAuthority())
+    {
+        return;
+    }
 
     ElapsedTime += DeltaTime;
     float CycleTime = FMath::Fmod(ElapsedTime, CycleInterval);
@@ -61,6 +69,11 @@ void AFlipper::Tick(float DeltaTime)
 
 void AFlipper::OnOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+    if (!HasAuthority())
+    {
+        return;
+    }
+    
     ACharacter* Character = Cast<ACharacter>(OtherActor);
     if (Character)
     {
