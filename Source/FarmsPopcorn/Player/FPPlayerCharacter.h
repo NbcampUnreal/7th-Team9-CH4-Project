@@ -183,4 +183,25 @@ public:
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion
+	
+#pragma region SavePointLoaction(세이브 포인트 위치 저장)
+	void SetSavePointLocation(FVector NewLocation, FRotator NewRotator)
+	{
+		SaveLocation = NewLocation;
+		SaveRotation = NewRotator;
+	}
+	
+	FVector GetSaveLocation() { return SaveLocation; }
+	FRotator GetSaveRotation() { return SaveRotation; }
+
+private:
+
+	FVector SaveLocation;
+	FRotator SaveRotation;
+
+#pragma endregion
+
+public:
+	
 };
+
