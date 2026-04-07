@@ -202,6 +202,7 @@ private:
 #pragma endregion
 
 public:
-	
+	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Name")
+	FString CurrentName;
 };
 

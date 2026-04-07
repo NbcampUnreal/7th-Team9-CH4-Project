@@ -2,6 +2,7 @@
 
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
+#include "FPPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
@@ -257,3 +258,5 @@ void AFPPlayerCharacter::GetLifetimeReplicatedProps(
     //DOREPLIFETIME(APRPlayerCharacter, CharacterIndex);// 캐릭터 선택 동기화
    // DOREPLIFETIME(APRPlayerCharacter, MaxJumpCount);// 점프 횟수 동기화
 }
+
+
