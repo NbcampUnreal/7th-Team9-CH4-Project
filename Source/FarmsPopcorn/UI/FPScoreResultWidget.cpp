@@ -54,7 +54,7 @@ void UFPScoreResultWidget::OnBackToLobbyClicked()
 	APlayerController* OwningPlayer = GetOwningPlayer();
 	if (OwningPlayer)
 	{
-		OwningPlayer->ClientTravel("경로", TRAVEL_Absolute); // 로비 경로 입력
+		OwningPlayer->ClientTravel("/Game/Maps/L_Lobby.L_Lobby", TRAVEL_Absolute); // 로비 경로 입력
 	}
 }
 
