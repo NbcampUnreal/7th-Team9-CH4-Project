@@ -12,18 +12,34 @@ class FARMSPOPCORN_API AFPPlayerState : public APlayerState
 	
 public:
 	AFPPlayerState();
-	bool bIsReady = false;
-	void Server_SetReady_Implementation(bool bNewReadyState);
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Team")
+	
+	UFUNCTION(Server, Reliable)
+	void Server_SetReady(bool bNewReadyState);
+	
+	UPROPERTY(BlueprintReadWrite, Replicated, Category = "PlayerState")
+	bool bIsReady = false;	
+	
+	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Team")
 	EFPTeamID TeamID = EFPTeamID::None;
-#pragma region Name //캐릭터 이름 설정
+#pragma region Character Setting //캐릭터설정
 	
 	UFUNCTION()
 	void OnRep_CustomPlayerName();
 
 	UPROPERTY(ReplicatedUsing = OnRep_CustomPlayerName)
 	FString CustomPlayerName;
-#pragma endregion Name	//캐릭터 이름 설정 끝
+	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Character")
+	FName AssignedCharacterID;    
+	//  할당된 캐릭터 클래스
+	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Character")
+	TSubclassOf<APawn> AssignedCharacterClass;    
+	//  할당된 캐릭터 이름 (UI 표시용)
+	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Character")
+	FString AssignedCharacterName;    
+	//  할당된 캐릭터 아이콘 (UI 표시용)
+	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Character")
+	TSoftObjectPtr<UTexture2D> AssignedCharacterIcon;
+#pragma endregion 	//캐릭터 이름 설정 끝
 
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 };
