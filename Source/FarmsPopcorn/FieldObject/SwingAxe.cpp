@@ -1,9 +1,13 @@
 ﻿#include "FieldObject/SwingAxe.h"
 #include "GameFramework/Character.h"
+#include "Net/UnrealNetwork.h"
 
 ASwingAxe::ASwingAxe()
 {
     PrimaryActorTick.bCanEverTick = true;
+    bReplicates = true;
+    SetReplicateMovement(true);
+    
     RunningTime = 0.0f;
 
     SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
@@ -20,14 +24,14 @@ ASwingAxe::ASwingAxe()
     AxeMesh->OnComponentBeginOverlap.AddDynamic(this, &ASwingAxe::OnOverlap);
 }
 
-void ASwingAxe::BeginPlay()
-{
-    Super::BeginPlay();
-}
-
 void ASwingAxe::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
+    
+    if (!HasAuthority())
+    {
+        return;
+    }
 
     // 이미지에 있던 RunningTime 활용 로직
     RunningTime += DeltaTime;
@@ -37,6 +41,11 @@ void ASwingAxe::Tick(float DeltaTime)
 
 void ASwingAxe::OnOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+    if (!HasAuthority())
+    {
+        return;
+    }
+    
     ACharacter* Character = Cast<ACharacter>(OtherActor);
     if (Character)
     {
