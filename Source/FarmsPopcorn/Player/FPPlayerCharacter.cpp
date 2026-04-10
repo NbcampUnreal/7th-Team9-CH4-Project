@@ -48,6 +48,16 @@ AFPPlayerCharacter::AFPPlayerCharacter()
     HeadDetectBox->SetRelativeLocation(FVector(0.f, 0.f, 90.f)); // 머리 위 위치
     HeadDetectBox->SetBoxExtent(FVector(50.f, 50.f, 10.f));       // 납작한 박스
     HeadDetectBox->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+
+    // [추가] 아이템 비주얼 컴포넌트 생성
+    ItemVisualMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemVisualMesh"));
+
+    // 이전에 만든 StackSocket에 부착 (머리 위 위치)
+    ItemVisualMesh->SetupAttachment(GetMesh(), TEXT("StackSocket"));
+
+    // 기본적으로는 보이지 않게 설정
+    ItemVisualMesh->SetVisibility(false);
+    ItemVisualMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 아이템 외형이 물리 충돌을 일으키지 않게 함
 }
 
 void AFPPlayerCharacter::BeginPlay()
@@ -238,7 +248,32 @@ void AFPPlayerCharacter::PickupItem(EItemType NewItem)
 
 void AFPPlayerCharacter::OnRep_CurrentItem()
 {
-    // TODO: 아이템 HUD 아이콘 갱신 (UMG 연동)
+    // 1. 아이템이 없으면 숨기기
+    if (CurrentItem == EItemType::None)
+    {
+        ItemVisualMesh->SetVisibility(false);
+        return;
+    }
+
+    // 2. 아이템이 있다면 보이기
+    ItemVisualMesh->SetVisibility(true);
+
+    // 3. 현재 아이템 종류에 따라 메시 교체
+    UStaticMesh* SelectedMesh = nullptr;
+
+    switch (CurrentItem)
+    {
+    case EItemType::Fan:          SelectedMesh = Mesh_Fan;          break;
+    case EItemType::Magnet:       SelectedMesh = Mesh_Magnet;       break;
+    case EItemType::WaterBalloon: SelectedMesh = Mesh_WaterBalloon; break;
+    case EItemType::SweetPotato:  SelectedMesh = Mesh_SweetPotato;  break;
+    default: break;
+    }
+
+    if (SelectedMesh)
+    {
+        ItemVisualMesh->SetStaticMesh(SelectedMesh);
+    }
 }
 
 // ---------------------------------------------------------

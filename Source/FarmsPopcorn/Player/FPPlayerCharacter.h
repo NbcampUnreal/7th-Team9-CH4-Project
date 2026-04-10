@@ -123,6 +123,24 @@ public:
     UFUNCTION(BlueprintPure)
     EItemType GetCurrentItem() const { return CurrentItem; }
 
+    // [추가] 머리 위에 뜰 아이템 메시 컴포넌트
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PR|Item")
+    TObjectPtr<UStaticMeshComponent> ItemVisualMesh;
+
+    UPROPERTY(EditDefaultsOnly, Category = "PR|Item")
+    TObjectPtr<UStaticMesh> Mesh_Fan;
+
+    UPROPERTY(EditDefaultsOnly, Category = "PR|Item")
+    TObjectPtr<UStaticMesh> Mesh_Magnet;
+
+    UPROPERTY(EditDefaultsOnly, Category = "PR|Item")
+    TObjectPtr<UStaticMesh> Mesh_WaterBalloon;
+
+    UPROPERTY(EditDefaultsOnly, Category = "PR|Item")
+    TObjectPtr<UStaticMesh> Mesh_SweetPotato;
+
+    UPROPERTY(VisibleAnywhere, Category = "PR|Item")
+    TObjectPtr<UStaticMeshComponent> ItemDisplayMesh;
 private:
     // 아이템 사용 실제 처리 (서버에서 실행)
     UFUNCTION(Server, Reliable)
