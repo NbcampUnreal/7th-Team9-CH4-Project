@@ -42,6 +42,14 @@ public:
     UPROPERTY(EditAnywhere, Category = "Settings")
     float RecoverySpeed = 1.5f;
 
+    
 private:
+    UPROPERTY(ReplicatedUsing = OnRep_CurrentTilt)
     float CurrentTilt = 0.0f;
+    
+    UFUNCTION()
+    void OnRep_CurrentTilt();
+    
+public:
+    virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 };

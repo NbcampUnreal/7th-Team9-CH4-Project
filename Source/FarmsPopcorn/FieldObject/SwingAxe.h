@@ -12,10 +12,6 @@ class FARMSPOPCORN_API ASwingAxe : public AActor
 public:
     ASwingAxe();
 
-protected:
-    virtual void BeginPlay() override;
-
-public:
     virtual void Tick(float DeltaTime) override;
 
     UPROPERTY(VisibleAnywhere, Category = "Components")
@@ -37,7 +33,7 @@ public:
 private:
     // 이미지에 있던 변수
     float RunningTime = 0.0f;
-
+    
     UFUNCTION()
     void OnOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 };

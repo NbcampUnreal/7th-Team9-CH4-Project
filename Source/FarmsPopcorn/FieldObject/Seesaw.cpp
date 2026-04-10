@@ -1,10 +1,12 @@
 ﻿#include "FieldObject/SeeSaw.h"
 #include "GameFramework/Character.h"
 #include "Components/BoxComponent.h"
+#include "Net/UnrealNetwork.h"
 
 ASeeSaw::ASeeSaw()
 {
     PrimaryActorTick.bCanEverTick = true;
+    bReplicates = true;
 
     SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
     RootComponent = SceneRoot;
@@ -22,6 +24,11 @@ void ASeeSaw::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
+    if (!HasAuthority())
+    {
+        return;
+    }
+    
     TArray<AActor*> OverlappingActors;
     DetectionBox->GetOverlappingActors(OverlappingActors, ACharacter::StaticClass());
 
@@ -62,5 +69,17 @@ void ASeeSaw::Tick(float DeltaTime)
 
     // 최종 적용
     CurrentTilt = FMath::Clamp(CurrentTilt, -1.0f, 1.0f);
+    PlankMesh->SetRelativeRotation(FRotator(CurrentTilt * MaxTiltAngle, 0.0f, 0.0f));
+}
+
+void ASeeSaw::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(ASeeSaw, CurrentTilt);
+}
+
+void ASeeSaw::OnRep_CurrentTilt()
+{
+    //클라이언트에서 CurrentTilt가 바뀔 때 실행
     PlankMesh->SetRelativeRotation(FRotator(CurrentTilt * MaxTiltAngle, 0.0f, 0.0f));
 }
