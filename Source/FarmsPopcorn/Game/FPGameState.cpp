@@ -87,4 +87,6 @@ void AFPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AFPGameState, GamePhase);
 	DOREPLIFETIME(AFPGameState, RedTeamScore);
 	DOREPLIFETIME(AFPGameState, BlueTeamScore);
+	
+	
 }

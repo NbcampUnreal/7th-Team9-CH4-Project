@@ -1,6 +1,4 @@
 #include "Player/FPPlayerState.h"
-
-
 #include "FPPlayerCharacter.h"
 #include "Game/FPGameMode.h"
 #include "Net/UnrealNetwork.h"
@@ -9,10 +7,14 @@ AFPPlayerState::AFPPlayerState()
 	:CustomPlayerName("NoneName")
 {
 }
-//
+
+
 void AFPPlayerState::Server_SetReady_Implementation(bool bNewReadyState)
 {
 	bIsReady = bNewReadyState;
+	UE_LOG(LogTemp, Warning, TEXT("플레이어 %s의 준비 상태: %s"), 
+		*GetPlayerName(), bNewReadyState ? TEXT("준비") : TEXT("대기"));
+    
 	AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode());
 	if (GM)
 	{
@@ -35,5 +37,11 @@ void AFPPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);	
 	DOREPLIFETIME(AFPPlayerState, CustomPlayerName);
+	DOREPLIFETIME(AFPPlayerState, TeamID);
+	DOREPLIFETIME(AFPPlayerState, bIsReady);
+	DOREPLIFETIME(AFPPlayerState, AssignedCharacterID);
+	DOREPLIFETIME(AFPPlayerState, AssignedCharacterClass);
+	DOREPLIFETIME(AFPPlayerState, AssignedCharacterName);
+	DOREPLIFETIME(AFPPlayerState, AssignedCharacterIcon);
 	
 }
