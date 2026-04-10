@@ -5,6 +5,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
+#include "FPUIManagerSubsystem.h"
 
 void UFPCreatenameWidget::NativeConstruct()
 {
@@ -50,6 +51,11 @@ void UFPCreatenameWidget::OnConfirmClicked()
 {
 	if (!NickNameTextBox) return;
 	FString Nick = NickNameTextBox->GetText().ToString();
+	UFPUIManagerSubsystem* Storage = GetGameInstance()->GetSubsystem<UFPUIManagerSubsystem>();
+	if (Storage)
+	{
+		Storage->SavedNickName = Nick;
+	}
 	if (!ValidateNickName(Nick))
 	{
 		ShowStatusMessage(TEXT("닉네임 형식이 올바르지 않습니다."), FColor::Red);
@@ -62,7 +68,7 @@ void UFPCreatenameWidget::OnConfirmClicked()
 			 {
 				 if (WeakThis.IsValid())
 				 {
-					 UGameplayStatics::OpenLevel(WeakThis->GetWorld(), FName("L_Lobby"));
+					 WeakThis->GetWorld()->ServerTravel(TEXT("/Game/Maps/L_Lobby?listen"));
 				 }
 			 }, 1.0f, false);
 }
