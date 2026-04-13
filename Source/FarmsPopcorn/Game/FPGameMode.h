@@ -84,4 +84,17 @@ protected:
     void ExecuteMapTravel();      // 3초 뒤에 실제로 맵을 넘길 함수
     void ResetAvatarSelection(); //아바타 리셋 (게임 재시작시)
     #pragma endregion GameStart // 게임시작 마지막
+    
+#pragma region Score //팀 점수
+public:    
+    //점수 올리기
+    void AddScoreToTeam(EFPTeamID InTeamID, int32 ScoreAmount);
+	
+    //레드팀 점수
+    int32 RedTeamScore = 0;
+    //블루팀 점수
+    int32 BlueTeamScore = 0;
+    
+    
+#pragma endregion 
 };
