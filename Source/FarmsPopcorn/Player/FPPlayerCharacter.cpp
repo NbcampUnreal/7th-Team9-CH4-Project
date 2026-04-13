@@ -8,6 +8,7 @@
 #include "Net/UnrealNetwork.h" // DOREPLIFETIME 매크로
 #include "FPPlayerState.h" 
 #include "Components/CapsuleComponent.h"
+#include "Engine/OverlapResult.h"
 
 AFPPlayerCharacter::AFPPlayerCharacter()
 {
@@ -206,19 +207,67 @@ void AFPPlayerCharacter::Server_UseItem_Implementation()
 
 void AFPPlayerCharacter::UseFan()
 {
-    // TODO: 주변 일정 범위 적 캐릭터에게 LaunchCharacter() 적용
+    // 선풍기: 주변 일정 범위 적 캐릭터에게 LaunchCharacter() 적용
+    TArray<FOverlapResult> OverlapResults;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(500.f);
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    if (GetWorld()->OverlapMultiByChannel(OverlapResults, GetActorLocation(), FQuat::Identity, ECC_Pawn, Sphere, Params))
+    {
+        for (auto& Result : OverlapResults)
+        {
+            if (ACharacter* OtherChar = Cast<ACharacter>(Result.GetActor()))
+            {
+                FVector LaunchDir = OtherChar->GetActorLocation() - GetActorLocation();
+                LaunchDir.Normalize();
+                OtherChar->LaunchCharacter(LaunchDir * 1500.f + FVector(0, 0, 500.f), true, true);
+            }
+        }
+    }
     Multicast_PlayItemEffect(EItemType::Fan);
 }
 
 void AFPPlayerCharacter::UseMagnet()
 {
-    // TODO: 앞 방향 일정 거리 적 캐릭터 위치를 내 위치 앞으로 이동
+    // 자석: 앞 방향 일정 거리 적 캐릭터 위치를 내 위치 앞으로 이동
+    FVector Forward = GetActorForwardVector();
+    FVector Start = GetActorLocation();
+    FVector End = Start + (Forward * 1000.f);
+
+    FHitResult Hit;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Pawn, Params))
+    {
+        if (ACharacter* OtherChar = Cast<ACharacter>(Hit.GetActor()))
+        {
+            FVector PullDir = GetActorLocation() - OtherChar->GetActorLocation();
+            PullDir.Normalize();
+            OtherChar->LaunchCharacter(PullDir * 2000.f, true, true);
+        }
+    }
     Multicast_PlayItemEffect(EItemType::Magnet);
 }
 
 void AFPPlayerCharacter::UseWaterBalloon()
 {
-    // TODO: 타겟 캐릭터 MovementMode를 2초간 Disabled 처리
+    // 물풍선: 타겟 캐릭터 MovementMode를 2초간 Disabled 처리 (또는 속도 0)
+    FHitResult Hit;
+    if (GetWorld()->LineTraceSingleByChannel(Hit, GetActorLocation(), GetActorLocation() + GetActorForwardVector() * 500.f, ECC_Pawn))
+    {
+        if (ACharacter* OtherChar = Cast<ACharacter>(Hit.GetActor()))
+        {
+            OtherChar->GetCharacterMovement()->MaxWalkSpeed = 0.f;
+
+            FTimerHandle UnusedHandle;
+            GetWorldTimerManager().SetTimer(UnusedHandle, [OtherChar]()
+                {
+                    if (OtherChar) OtherChar->GetCharacterMovement()->MaxWalkSpeed = 600.f;
+                }, 2.0f, false);
+        }
+    }
     Multicast_PlayItemEffect(EItemType::WaterBalloon);
 }
 

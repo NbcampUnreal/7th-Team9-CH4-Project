@@ -47,13 +47,43 @@ void AFPItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherA
     // 플레이어가 살아있고, 이미 들고 있는 아이템이 없을 때만 획득
     if (Player && Player->GetCurrentItem() == EItemType::None)
     {
-        // 랜덤으로 아이템 결정 (None 제외 1~4번 중 하나)
-        // EItemType::Fan ~ EItemType::SweetPotato
-        int32 RandomItemIdx = FMath::RandRange(1, 4);
-        EItemType RandomItem = static_cast<EItemType>(RandomItemIdx);
+        // 1. 데이터 테이블이 비어있지 않은지 검사
+        if (!ItemDataTable)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("ItemDataTable is Missing in FPItem!"));
+            return;
+        }
 
-        // 플레이어에게 아이템 지급
-        Player->PickupItem(RandomItem);
+        // 2. 데이터 테이블의 모든 행(Row) 가져오기
+        TArray<FItemData*> AllItems;
+        ItemDataTable->GetAllRows<FItemData>(TEXT("ItemSpawnContext"), AllItems);
+
+        // 3. 전체 가중치(SpawnWeight) 합산 구하기
+        int32 TotalWeight = 0;
+        for (FItemData* ItemInfo : AllItems)
+        {
+            TotalWeight += ItemInfo->SpawnWeight;
+        }
+
+        // 4. 1부터 총 가중치 사이에서 랜덤 숫자 뽑기
+        int32 RandomWeight = FMath::RandRange(1, TotalWeight);
+        int32 CurrentWeight = 0;
+        EItemType SelectedItem = EItemType::None;
+
+        // 5. 어떤 아이템이 당첨되었는지 확인 (룰렛 방식)
+        for (FItemData* ItemInfo : AllItems)
+        {
+            CurrentWeight += ItemInfo->SpawnWeight;
+            if (RandomWeight <= CurrentWeight)
+            {
+                SelectedItem = ItemInfo->ItemType;
+                break; // 당첨! 루프 종료
+            }
+        }
+
+        // 6. 플레이어에게 아이템 지급
+        Player->PickupItem(SelectedItem);
+
 
         // 상자 비활성화 (마리오카트처럼 먹으면 사라짐)
         SetActorHiddenInGame(true);
