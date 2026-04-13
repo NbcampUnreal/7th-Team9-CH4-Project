@@ -15,7 +15,10 @@ public class FarmsPopcorn : ModuleRules
 			"InputCore",
 			"EnhancedInput",
             "OnlineSubsystem",          // 멀티플레이 세션용
-            "OnlineSubsystemUtils"
+            "OnlineSubsystemUtils",
+			"SlateCore",
+			"Slate",
+			"UMG"
         });
         PublicIncludePaths.AddRange(new string[]
         {
