@@ -332,3 +332,14 @@ UClass* AFPGameMode::GetDefaultPawnClassForController_Implementation(AController
 	UE_LOG(LogTemp, Error, TEXT("플레이어 %s에게 할당된 캐릭터가 없습니다!"), *InController->GetName());
 	return Super::GetDefaultPawnClassForController_Implementation(InController);
 }
+
+void AFPGameMode::AddScoreToTeam(EFPTeamID InTeamID, int32 ScoreAmount)
+{
+	if (InTeamID == EFPTeamID::TeamRed)
+	{
+		RedTeamScore += ScoreAmount;
+	}else if (InTeamID == EFPTeamID::TeamBlue)
+	{
+		BlueTeamScore += ScoreAmount;
+	}
+}

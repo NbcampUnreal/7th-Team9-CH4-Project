@@ -9,20 +9,23 @@ void AFPPlayerController::ServerSetCustomName_Implementation(const FString& NewN
 	if (AFPPlayerState* PS = GetPlayerState<AFPPlayerState>())
 	{
 		PS->CustomPlayerName = NewName;
+		UE_LOG(LogTemp, Warning, TEXT("플레이어 %s의 "), 
+		*PS->GetPlayerName());
 	}
+	
 }
 
-void AFPPlayerController::Server_SetReady_Implementation(bool bNewReadyState)
+void AFPPlayerController::SetReady(bool bNewReadyState)
 {
-	AFPPlayerState* PS = GetPlayerState<AFPPlayerState>();
-	
-	UE_LOG(LogTemp, Warning, TEXT("플레이어 %s의 준비 상태: %s"), 
-		*PS->GetPlayerName(), bNewReadyState ? TEXT("준비") : TEXT("대기"));
-    
-	PS->bIsReady = bNewReadyState;
-	AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode());
-	if (GM)
+	if (AFPPlayerState* PS = GetPlayerState<AFPPlayerState>())
+	{
+		if (PS->bIsReady == bNewReadyState) return;
+		PS->Server_SetReady(bNewReadyState);
+	}
+	if (AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode()))
 	{
 		GM->CheckAllPlayersReady(); 
 	}
 }
+
+

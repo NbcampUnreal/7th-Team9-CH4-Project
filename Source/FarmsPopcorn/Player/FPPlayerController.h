@@ -16,8 +16,7 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerSetCustomName(const FString& NewName);
 	
-	UFUNCTION(Server, Reliable)
-	void Server_SetReady(bool bNewReadyState);
+	void SetReady(bool bNewReadyState);
 	
 	
 };
