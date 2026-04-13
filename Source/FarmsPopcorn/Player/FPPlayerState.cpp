@@ -1,11 +1,26 @@
 #include "Player/FPPlayerState.h"
 #include "FPPlayerCharacter.h"
+#include "Game/FPGameInstance.h"
 #include "Game/FPGameMode.h"
 #include "Net/UnrealNetwork.h"
 
 AFPPlayerState::AFPPlayerState()
 	:CustomPlayerName("NoneName")
 {
+	
+}
+
+void AFPPlayerState::BeginPlay()
+{
+	Super::BeginPlay();
+	if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
+	{
+		CustomPlayerName = GI->SaveNickName;
+		TeamID = GI->SaveTeamID;
+		AssignedCharacterClass = GI->SaveCharacterClass;
+		AssignedCharacterID = GI->SaveCharacterID;
+	}
+
 }
 
 

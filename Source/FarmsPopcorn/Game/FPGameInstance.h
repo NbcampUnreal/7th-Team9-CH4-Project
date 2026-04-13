@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
+#include "Core/FPTeamID.h"
 #include "FPGameInstance.generated.h"
 
 /**
@@ -13,4 +14,28 @@ UCLASS()
 class FARMSPOPCORN_API UFPGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
+
+public:
+	UFPGameInstance();
+	
+	virtual void Init() override;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GameData")
+	FString SaveNickName; //플레이어네임
+	
+	//팀스코어
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GameData")
+	int32 SaveRedScore = 0;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GameData")
+	int32 SaveBlueScore = 0;
+	
+	//팀 정보
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GameData")
+	EFPTeamID SaveTeamID = EFPTeamID::None;
+
+	UPROPERTY()
+	TSubclassOf<APawn> SaveCharacterClass; // 캐릭터 모델 저장
+
+	UPROPERTY()
+	FName SaveCharacterID; //캐릭터 ID
 };

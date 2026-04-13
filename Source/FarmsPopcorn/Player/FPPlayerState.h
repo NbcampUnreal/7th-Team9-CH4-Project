@@ -13,6 +13,7 @@ class FARMSPOPCORN_API AFPPlayerState : public APlayerState
 public:
 	AFPPlayerState();
 	
+	virtual void BeginPlay() override;
 	UFUNCTION(Server, Reliable)
 	void Server_SetReady(bool bNewReadyState);
 	
