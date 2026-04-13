@@ -59,6 +59,8 @@ void AMine::OnCharacterDetected(UPrimitiveComponent* OverlappedComp, AActor* Oth
 
 void AMine::Pop()
 {
+    if (!HasAuthority()) return;
+    
     FVector PopLocation = GetActorLocation();
 
     // 감지 반경 안에 있는 액터를 찾음
@@ -86,6 +88,11 @@ void AMine::Pop()
         }
     }
     
+    Multicast_Pop();
+}
+
+void AMine::Multicast_Pop_Implementation()
+{
     // 폭발 후 삭제
     Destroy();
 }

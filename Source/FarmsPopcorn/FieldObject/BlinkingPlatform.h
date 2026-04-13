@@ -13,6 +13,8 @@ public:
     ABlinkingPlatform();
     virtual void Tick(float DeltaTime) override;
 
+    void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+    
 protected:
     virtual void BeginPlay() override;
 
@@ -23,10 +25,14 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Settings")
     float Interval = 3.0f;
 
+    UPROPERTY(ReplicatedUsing = OnRep_IsVisible)
+    bool bIsVisible = true;
+    
+    UFUNCTION()
+    void OnRep_IsVisible();
+
 private:
     float Timer = 0.0f;
-    bool bIsVisible = true;
-
     // 상태 업데이트 함수
     void UpdatePlatformState();
 };
