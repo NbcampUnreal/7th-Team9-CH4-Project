@@ -13,6 +13,8 @@ public:
     AFloorGenerator();
 
     virtual void OnConstruction(const FTransform& Transform) override;
+    
+    virtual void BeginPlay() override;
 
 protected:
     // ISM 컴포넌트
@@ -30,4 +32,7 @@ protected:
     // 블록의 크기 및 간격
     UPROPERTY(EditAnywhere, Category = "Grid Settings")
     float BlockSize;
+    
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_GenerateFloor();
 };
