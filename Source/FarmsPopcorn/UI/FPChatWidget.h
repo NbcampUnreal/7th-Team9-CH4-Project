@@ -29,7 +29,6 @@ protected:
 	void OnChatInputCommitted(const FText& Text, ETextCommit::Type CommitMethod);
 
 private:
-	FTimerHandle MessageCheckTimerHandle;
 	//메시지 전송
 	void SendMessage(const FString& Message);
 //쌓인채팅을UI로 옮김

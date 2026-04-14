@@ -13,11 +13,19 @@ void UFPCreatenameWidget::NativeConstruct()
 	//택스트 변할때마다 유효성검사
 	if (NickNameTextBox)
 	{
+		NickNameTextBox->OnTextChanged.RemoveDynamic(this, &UFPCreatenameWidget::OnNickNameTextChanged);
 		NickNameTextBox->OnTextChanged.AddDynamic(this, &UFPCreatenameWidget::OnNickNameTextChanged);
 	}
 	//초기 버튼 상태
-	if (ConfirmButton)ConfirmButton->SetIsEnabled(false);
-	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (ConfirmButton)
+	{
+		ConfirmButton->SetIsEnabled(false);
+	}
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC)
+	{
+		PC = GetWorld()->GetFirstPlayerController();
+	}
 	//컨트롤러 대신하는 역할(UI한정 마우스 커서 보임)
 	if (PC)
 	{
@@ -29,11 +37,20 @@ void UFPCreatenameWidget::NativeConstruct()
 
 	//닉네임 생성창 버튼
 	if (RandomButton)//랜덤 닉네임
+	{
+		RandomButton->OnClicked.RemoveDynamic(this, &UFPCreatenameWidget::OnRandomClicked);
 		RandomButton->OnClicked.AddDynamic(this, &UFPCreatenameWidget::OnRandomClicked);
-	if(ConfirmButton)//닉네임 생성 성공
+	}
+	if (ConfirmButton)//닉네임 생성 성공
+	{
+		ConfirmButton->OnClicked.RemoveDynamic(this, &UFPCreatenameWidget::OnConfirmClicked);
 		ConfirmButton->OnClicked.AddDynamic(this, &UFPCreatenameWidget::OnConfirmClicked);
-	if(CancleButton)// 닉네임 생성 실패
+	}
+	if (CancleButton)// 닉네임 생성 취소
+	{
+		CancleButton->OnClicked.RemoveDynamic(this, &UFPCreatenameWidget::OnCancelClicked);
 		CancleButton->OnClicked.AddDynamic(this, &UFPCreatenameWidget::OnCancelClicked);
+	}
 }
 //랜덤닉네임
 void UFPCreatenameWidget::OnRandomClicked()
@@ -49,10 +66,18 @@ void UFPCreatenameWidget::OnRandomClicked()
 //닉네임 생성
 void UFPCreatenameWidget::OnConfirmClicked()
 {
-	if (!NickNameTextBox) return;
+	if (!NickNameTextBox)
+	{
+		return;
+	}
 
 	//닉네임 가져오기
 	FString Nick = NickNameTextBox->GetText().ToString();
+	if (!ValidateNickName(Nick))
+	{
+		ShowStatusMessage(TEXT("닉네임 형식이 올바르지 않습니다."), FColor::Red);
+		return;
+	}
 
 	//로컬 저장
 	UFPUIManagerSubsystem* Storage = GetGameInstance()->GetSubsystem<UFPUIManagerSubsystem>();
@@ -60,29 +85,38 @@ void UFPCreatenameWidget::OnConfirmClicked()
 	{
 		Storage->SavedNickName = Nick;
 	}
-
-	//유효성 검사
-	if (!ValidateNickName(Nick))
+	//성공 메시지
+	ShowStatusMessage(FString::Printf(TEXT("닉네임 생성 성공! %s 환영합니다!"), *Nick), FColor::Cyan);
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC)
 	{
-		ShowStatusMessage(TEXT("닉네임 형식이 올바르지 않습니다."), FColor::Red);
+		PC = GetWorld()->GetFirstPlayerController();
+	}
+	//로비 UI 클래스나 컨트롤러가 없으면 종료
+	if (!LobbyWidgetClass || !PC)
+	{
 		return;
 	}
-		 ShowStatusMessage(TEXT("닉네임 생성 성공! %s 환영합니다!. 로비로 이동합니다."), FColor::Cyan);
-		 FTimerHandle LevelTimer;
-		 TWeakObjectPtr<UFPCreatenameWidget> WeakThis(this);
-		 GetWorld()->GetTimerManager().SetTimer(LevelTimer, [WeakThis]()
-			 {
-				 if (WeakThis.IsValid())
-				 {
-					 WeakThis->GetWorld()->ServerTravel(TEXT("/Game/Maps/L_Lobby?listen"));
-				 }
-			 }, 1.0f, false);
+	//로비 위젯 생성 후 화면에 표시
+	UUserWidget* LobbyUI = CreateWidget<UUserWidget>(PC, LobbyWidgetClass);
+	if (LobbyUI)
+	{
+		LobbyUI->AddToViewport();
+		//현재 닉네임 생성 위젯 제거
+		RemoveFromParent();
+	}
 }
 //닉네임 생성 취소
 void UFPCreatenameWidget::OnCancelClicked()
 {
+	//현재 위젯 닫기
 	RemoveFromParent();
-	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC)
+	{
+		PC = GetWorld()->GetFirstPlayerController();
+	}
+	//입력 모드
 	if (PC)
 	{
 		FInputModeGameOnly Mode;
@@ -94,7 +128,7 @@ void UFPCreatenameWidget::OnCancelClicked()
 void UFPCreatenameWidget::OnNickNameTextChanged(const FText& Text)
 {
 	FString Nick = Text.ToString();
-	bool bIsValid = ValidateNickName(Text.ToString());
+	bool bIsValid = ValidateNickName(Nick);
 	FString ErrorMsg = TEXT("");
 	//닉네임 길이 검사 2~6자
 	if (Nick.Len() < 2)
@@ -120,7 +154,10 @@ void UFPCreatenameWidget::OnNickNameTextChanged(const FText& Text)
 	else if (bIsValid && !Nick.IsEmpty())
 	{
 		// 유효하다면 안내 문구 숨기기
-		if (ERRORTEXT) ERRORTEXT->SetVisibility(ESlateVisibility::Hidden);
+		if (ERRORTEXT)
+		{
+			ERRORTEXT->SetVisibility(ESlateVisibility::Hidden);
+		}
 	}
 }
 
@@ -165,5 +202,5 @@ FString UFPCreatenameWidget::GenerateRandomNickname()
 //닉네임 글자수 설정
 bool UFPCreatenameWidget::ValidateNickName(const FString& NickName)
 {
-	return true;
+	return NickName.Len() >= 2 && NickName.Len() <= 6;
 }

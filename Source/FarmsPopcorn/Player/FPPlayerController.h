@@ -23,6 +23,7 @@ struct FPendingChatMessage
 	{
 	}
 };
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnChatMessageReceived, const FString&, const FString&);
 
 UCLASS()
 class FARMSPOPCORN_API AFPPlayerController : public APlayerController
@@ -38,8 +39,13 @@ public:
 	
 	void SetReady(bool bNewReadyState);
 	
+	FOnChatMessageReceived OnChatMessageReceived;
+
 	UFUNCTION(Server, Reliable)
 	void ServerSendChatMessage(const FString& SenderName, const FString& Message);
+
+	UFUNCTION(Client, Reliable)
+	void ClientReceiveChatMessage(const FString& SenderName, const FString& Message);
 
 	//위젯이 읽어갈 채팅
 	UPROPERTY()
