@@ -11,9 +11,9 @@ class FARMSPOPCORN_API UFPChatWidget : public UUserWidget
 	GENERATED_BODY()
 	
 public:
-	//위젯 초기화
+	//위젯 생성시 호출
 	virtual void NativeConstruct() override;
-	//채팅 메시지 수신
+	//외부에서 채팅을 받아 UI에 표시
 	UFUNCTION(BlueprintCallable)
 	void ReceiveMessage(const FString& SenderName, const FString& Message);
 	
@@ -32,6 +32,7 @@ private:
 	FTimerHandle MessageCheckTimerHandle;
 	//메시지 전송
 	void SendMessage(const FString& Message);
+//쌓인채팅을UI로 옮김
 	UFUNCTION()
 	void CheckPendingMessages();
 };

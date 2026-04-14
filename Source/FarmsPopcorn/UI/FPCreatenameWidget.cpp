@@ -50,12 +50,18 @@ void UFPCreatenameWidget::OnRandomClicked()
 void UFPCreatenameWidget::OnConfirmClicked()
 {
 	if (!NickNameTextBox) return;
+
+	//닉네임 가져오기
 	FString Nick = NickNameTextBox->GetText().ToString();
+
+	//로컬 저장
 	UFPUIManagerSubsystem* Storage = GetGameInstance()->GetSubsystem<UFPUIManagerSubsystem>();
 	if (Storage)
 	{
 		Storage->SavedNickName = Nick;
 	}
+
+	//유효성 검사
 	if (!ValidateNickName(Nick))
 	{
 		ShowStatusMessage(TEXT("닉네임 형식이 올바르지 않습니다."), FColor::Red);
