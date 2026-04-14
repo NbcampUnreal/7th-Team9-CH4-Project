@@ -14,9 +14,10 @@ class FARMSPOPCORN_API AFPGameMode : public AGameMode
     
 public:
     
-    virtual void PostLogin(APlayerController* NewPlayer); 
+    virtual void PostLogin(APlayerController* NewPlayer) override;
+    virtual void BeginPlay() override;
 
-    
+
 #pragma region Team & Avatar // 팀 & 아바타
 public:
     void AssignCharacterToPlayer(APlayerController* PlayerController);
@@ -75,10 +76,11 @@ public:
     void StartGameCountdown(); 
     // 레디 상태확인
     bool ReadyPlayerCheck();
-    
-    
+    void DelayedReadyPlayerCheck();
+
 protected:
     FTimerHandle CountDownHandle; // 3초를 잴 타이머
+    FTimerHandle ReadyCheckHandle; // 레디체크 타이머
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameSettings")
     TSoftObjectPtr<UWorld> NextLevel; // level 이동
     void ExecuteMapTravel();      // 3초 뒤에 실제로 맵을 넘길 함수

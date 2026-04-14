@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
 #include "Core/FPTeamID.h"
+#include "Data/FPCharacterDataRow.h"
 #include "FPGameInstance.generated.h"
 
 /**
@@ -38,4 +39,8 @@ public:
 
 	UPROPERTY()
 	FName SaveCharacterID; //캐릭터 ID
+	UPROPERTY()
+	FString SaveCharacterName;
+	UPROPERTY()
+	TSoftObjectPtr<UTexture2D> SaveCharacterIcon;
 };

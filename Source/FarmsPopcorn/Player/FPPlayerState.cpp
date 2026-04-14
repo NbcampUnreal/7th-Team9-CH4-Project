@@ -27,14 +27,30 @@ void AFPPlayerState::BeginPlay()
 void AFPPlayerState::Server_SetReady_Implementation(bool bNewReadyState)
 {
 	bIsReady = bNewReadyState;
+    
 	UE_LOG(LogTemp, Warning, TEXT("플레이어 %s의 준비 상태: %s"), 
 		*GetPlayerName(), bNewReadyState ? TEXT("준비") : TEXT("대기"));
     
-	AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode());
-	if (GM)
+	// 기존 타이머가 있으면 제거
+	if (ReadyCheckDelayHandle.IsValid())
 	{
-		GM->CheckAllPlayersReady(); 
+		GetWorld()->GetTimerManager().ClearTimer(ReadyCheckDelayHandle);
 	}
+    
+	// 네트워크 동기화를 위해 딜레이 추가
+	GetWorld()->GetTimerManager().SetTimer(
+		ReadyCheckDelayHandle,
+		[this]()
+		{
+			AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode());
+			if (GM)
+			{
+				GM->CheckAllPlayersReady();
+			}
+		},
+		0.2f,  // 200ms 딜레이
+		false
+	);
 }
 
 void AFPPlayerState::OnRep_CustomPlayerName()

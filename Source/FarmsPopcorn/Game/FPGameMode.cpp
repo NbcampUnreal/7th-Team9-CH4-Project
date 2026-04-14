@@ -14,7 +14,33 @@ void AFPGameMode::PostLogin(APlayerController* NewPlayer)
 	AssignTeam(NewPlayer);
 	Super::PostLogin(NewPlayer);
 }
-
+void AFPGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	// GameInstance에서 저장된 캐릭터 정보 가져오기
+	UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
+	if (GI && GameState)
+	{
+		for (APlayerState* PS : GameState->PlayerArray)
+		{
+			AFPPlayerState* FPPlayerState = Cast<AFPPlayerState>(PS);
+			if (FPPlayerState && GI->SaveCharacterClass)
+			{
+				// GameInstance의 값으로 플레이어 업데이트
+				FPPlayerState->AssignedCharacterID = GI->SaveCharacterID;
+				FPPlayerState->AssignedCharacterClass = GI->SaveCharacterClass;
+				FPPlayerState->AssignedCharacterName = GI->SaveCharacterName;
+				FPPlayerState->AssignedCharacterIcon = GI->SaveCharacterIcon;
+				
+				UE_LOG(LogTemp, Warning, 
+					TEXT("플레이어 %s - 인게임에서 캐릭터 복원: %s"),
+					*FPPlayerState->GetPlayerName(),
+					*GI->SaveCharacterID.ToString());
+			}
+		}
+	}
+}
 //아바타 데이터테이블 정보확인
 void AFPGameMode::AssignCharacterToPlayer(APlayerController* PlayerController)
 {
@@ -90,8 +116,16 @@ void AFPGameMode::AssignCharacterToPlayer(APlayerController* PlayerController)
 			FPPlayerState->AssignedCharacterName = RowData->CharacterName;
 			FPPlayerState->AssignedCharacterIcon = RowData->CharacterIcon;
  
+			UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
+			if (GI)
+			{
+				GI->SaveCharacterID = RowPair.Key;
+				GI->SaveCharacterClass = SelectedClass;
+				GI->SaveCharacterName = RowData->CharacterName;
+				GI->SaveCharacterIcon = RowData->CharacterIcon;
+			}
 			UsedCharacterIDs.Add(RowPair.Key);
- 
+			
 			UE_LOG(LogTemp, Warning,
 				TEXT(" 플레이어 '%s'에게 할당: %s (이름: %s, 남은 아바타: %d)"),
 				*PlayerController->GetName(),
@@ -219,9 +253,7 @@ void AFPGameMode::ChangeTeam(AController* Player)
 // 준비 상태 체크
 void AFPGameMode::CheckAllPlayersReady()
 {
-	// 블루팀과 레드팀의 수가 같지 않으면 리턴
 	UpdateTeamCounts();
-	UE_LOG(LogTemp, Error, TEXT("Red: %d / Blue: %d"), RedTeamCount, BlueTeamCount);
     
 	if (RedTeamCount != BlueTeamCount) 
 	{
@@ -229,15 +261,19 @@ void AFPGameMode::CheckAllPlayersReady()
 		return;
 	}
     
-	if (ReadyPlayerCheck())
+	// 복제 동기화를 위해 약간의 딜레이 추가
+	if (ReadyCheckHandle.IsValid())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("모든 플레이어가 준비되었습니다! 카운트다운을 시작합니다."));
-		StartGameCountdown();
+		GetWorld()->GetTimerManager().ClearTimer(ReadyCheckHandle);
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("모든 플레이어가 준비되지않았습니다!"));
-	}
+    
+	GetWorld()->GetTimerManager().SetTimer(
+		ReadyCheckHandle,
+		this,
+		&AFPGameMode::DelayedReadyPlayerCheck,
+		0.1f,  // 100ms 딜레이
+		false
+	);
 }
 
 void AFPGameMode::StartGameCountdown()
@@ -264,21 +300,99 @@ void AFPGameMode::StartGameCountdown()
 
 bool AFPGameMode::ReadyPlayerCheck()
 {
-	// 플레이어 레디 상태 확인
 	if (!GameState || GameState->PlayerArray.Num() == 0)
 		return false;
+    
+	int32 ReadyCount = 0;
+	int32 TotalPlayers = GameState->PlayerArray.Num();
+    
 	for (APlayerState* PS : GameState->PlayerArray)
 	{
 		AFPPlayerState* FPPS = Cast<AFPPlayerState>(PS);
-		if (FPPS && !FPPS->bIsReady)
+		if (FPPS)
 		{
-			return false;
+			if (FPPS->bIsReady)
+			{
+				ReadyCount++;
+			}
+			else
+			{
+				// 디버깅: 준비 안 된 플레이어 로그
+				UE_LOG(LogTemp, Warning, 
+					TEXT("플레이어 %s는 아직 준비 안 함"), 
+					*FPPS->GetPlayerName());
+			}
 		}
 	}
-
-	return true;
+	UE_LOG(LogTemp, Warning, TEXT("준비 상태: %d / %d"), ReadyCount, TotalPlayers);
+    
+	// 최소 2명 이상 필요 
+	return ReadyCount == TotalPlayers && TotalPlayers >= 2;
 }
-
+void AFPGameMode::DelayedReadyPlayerCheck()
+{
+	if (!GameState || GameState->PlayerArray.Num() == 0)
+		return;
+    
+	int32 ReadyCount = 0;
+	int32 TotalPlayers = GameState->PlayerArray.Num();
+    
+	UE_LOG(LogTemp, Warning, TEXT("=== 준비 상태 최종 체크 시작 ==="));
+    
+	for (APlayerState* PS : GameState->PlayerArray)
+	{
+		AFPPlayerState* FPPS = Cast<AFPPlayerState>(PS);
+		if (FPPS)
+		{
+			UE_LOG(LogTemp, Warning, 
+				TEXT("플레이어 %s - bIsReady: %s"), 
+				*FPPS->GetPlayerName(), 
+				FPPS->bIsReady ? TEXT("TRUE") : TEXT("FALSE"));
+            
+			if (FPPS->bIsReady)
+			{
+				ReadyCount++;
+			}
+		}
+	}
+    
+	UE_LOG(LogTemp, Warning, TEXT("준비 상태: %d / %d"), ReadyCount, TotalPlayers);
+    
+	// 모든 조건을 명시적으로 확인
+	bool bAllReady = (ReadyCount == TotalPlayers) && (TotalPlayers >= 2);
+    
+	if (bAllReady)
+	{
+		// 추가 안전 장치: 실제로 모두 준비 상태인지 다시 한 번 확인
+		bool bDoubleCheck = true;
+		for (APlayerState* PS : GameState->PlayerArray)
+		{
+			AFPPlayerState* FPPS = Cast<AFPPlayerState>(PS);
+			if (FPPS && !FPPS->bIsReady)
+			{
+				bDoubleCheck = false;
+				UE_LOG(LogTemp, Error, 
+					TEXT("이중 체크 실패! 플레이어 %s가 준비 안 함"), 
+					*FPPS->GetPlayerName());
+				break;
+			}
+		}
+        
+		if (bDoubleCheck)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("✓ 모든 플레이어가 준비되었습니다! 카운트다운을 시작합니다."));
+			StartGameCountdown();
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("✗ 이중 체크 실패로 게임 시작 취소"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("✗ 모든 플레이어가 준비되지않았습니다!"));
+	}
+}
 void AFPGameMode::ExecuteMapTravel()
 {
 	// 인게임 레벨로 이동
@@ -333,7 +447,10 @@ UClass* AFPGameMode::GetDefaultPawnClassForController_Implementation(AController
 		
 		return FPPlayerState->AssignedCharacterClass;
 	}
-	UE_LOG(LogTemp, Error, TEXT("플레이어 %s에게 할당된 캐릭터가 없습니다!"), *InController->GetName());
+	if (!FPPlayerState && !FPPlayerState->AssignedCharacterClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("플레이어 %s에게 할당된 캐릭터가 없습니다!"), *InController->GetName());
+	}
 	return Super::GetDefaultPawnClassForController_Implementation(InController);
 }
 
