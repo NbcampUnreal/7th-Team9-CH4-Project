@@ -14,7 +14,33 @@ void AFPGameMode::PostLogin(APlayerController* NewPlayer)
 	AssignTeam(NewPlayer);
 	Super::PostLogin(NewPlayer);
 }
-
+void AFPGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	// GameInstance에서 저장된 캐릭터 정보 가져오기
+	UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
+	if (GI && GameState)
+	{
+		for (APlayerState* PS : GameState->PlayerArray)
+		{
+			AFPPlayerState* FPPlayerState = Cast<AFPPlayerState>(PS);
+			if (FPPlayerState && GI->SaveCharacterClass)
+			{
+				// GameInstance의 값으로 플레이어 업데이트
+				FPPlayerState->AssignedCharacterID = GI->SaveCharacterID;
+				FPPlayerState->AssignedCharacterClass = GI->SaveCharacterClass;
+				FPPlayerState->AssignedCharacterName = GI->SaveCharacterName;
+				FPPlayerState->AssignedCharacterIcon = GI->SaveCharacterIcon;
+				
+				UE_LOG(LogTemp, Warning, 
+					TEXT("플레이어 %s - 인게임에서 캐릭터 복원: %s"),
+					*FPPlayerState->GetPlayerName(),
+					*GI->SaveCharacterID.ToString());
+			}
+		}
+	}
+}
 //아바타 데이터테이블 정보확인
 void AFPGameMode::AssignCharacterToPlayer(APlayerController* PlayerController)
 {
@@ -90,8 +116,16 @@ void AFPGameMode::AssignCharacterToPlayer(APlayerController* PlayerController)
 			FPPlayerState->AssignedCharacterName = RowData->CharacterName;
 			FPPlayerState->AssignedCharacterIcon = RowData->CharacterIcon;
  
+			UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
+			if (GI)
+			{
+				GI->SaveCharacterID = RowPair.Key;
+				GI->SaveCharacterClass = SelectedClass;
+				GI->SaveCharacterName = RowData->CharacterName;
+				GI->SaveCharacterIcon = RowData->CharacterIcon;
+			}
 			UsedCharacterIDs.Add(RowPair.Key);
- 
+			
 			UE_LOG(LogTemp, Warning,
 				TEXT(" 플레이어 '%s'에게 할당: %s (이름: %s, 남은 아바타: %d)"),
 				*PlayerController->GetName(),
@@ -413,7 +447,10 @@ UClass* AFPGameMode::GetDefaultPawnClassForController_Implementation(AController
 		
 		return FPPlayerState->AssignedCharacterClass;
 	}
-	UE_LOG(LogTemp, Error, TEXT("플레이어 %s에게 할당된 캐릭터가 없습니다!"), *InController->GetName());
+	if (!FPPlayerState && !FPPlayerState->AssignedCharacterClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("플레이어 %s에게 할당된 캐릭터가 없습니다!"), *InController->GetName());
+	}
 	return Super::GetDefaultPawnClassForController_Implementation(InController);
 }
 

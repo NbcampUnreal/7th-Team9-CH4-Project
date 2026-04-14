@@ -14,9 +14,10 @@ class FARMSPOPCORN_API AFPGameMode : public AGameMode
     
 public:
     
-    virtual void PostLogin(APlayerController* NewPlayer); 
+    virtual void PostLogin(APlayerController* NewPlayer) override;
+    virtual void BeginPlay() override;
 
-    
+
 #pragma region Team & Avatar // 팀 & 아바타
 public:
     void AssignCharacterToPlayer(APlayerController* PlayerController);
