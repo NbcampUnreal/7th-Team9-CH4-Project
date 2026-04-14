@@ -9,6 +9,9 @@
 #include "FPPlayerState.h" 
 #include "Components/CapsuleComponent.h"
 #include "Engine/OverlapResult.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
+#include "NiagaraComponent.h"
 
 AFPPlayerCharacter::AFPPlayerCharacter()
 {
@@ -59,6 +62,16 @@ AFPPlayerCharacter::AFPPlayerCharacter()
     // 기본적으로는 보이지 않게 설정
     ItemVisualMesh->SetVisibility(false);
     ItemVisualMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 아이템 외형이 물리 충돌을 일으키지 않게 함
+
+    // 1. 나이아가라 컴포넌트 생성
+    JumpSmokeComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("JumpSmokeComponent"));
+
+    // 2. [핵심] 메시의 "StackSocket" 위치에 부착
+    // 부모 컴포넌트인 GetMesh() 뒤에 소켓 이름을 적어줍니다.
+    JumpSmokeComponent->SetupAttachment(GetMesh(), TEXT("StackSocket"));
+
+    // 자동 재생 방지 (필요할 때만 Activate 하기 위해)
+    JumpSmokeComponent->bAutoActivate = false;
 }
 
 void AFPPlayerCharacter::BeginPlay()
@@ -164,11 +177,7 @@ void AFPPlayerCharacter::HandleLookInput(
 // ---------------------------------------------------------
 void AFPPlayerCharacter::HandleJumpInput()
 {
-    if (JumpCount < MaxJumpCount)// 아직 점프 가능 횟수가 남아있으면
-    {
-        JumpCount++;// 점프 횟수 1 증가
-        ACharacter::Jump();// 실제 점프 실행
-    }
+    Jump();
 }
 
 void AFPPlayerCharacter::Landed(const FHitResult& Hit)
@@ -274,14 +283,39 @@ void AFPPlayerCharacter::UseWaterBalloon()
 void AFPPlayerCharacter::UseSweetPotato()
 {
     // 고구마: 이중점프 활성화
-    MaxJumpCount = 2;
+    JumpMaxCount = 2;
     Multicast_PlayItemEffect(EItemType::SweetPotato);
+
+    // (팁) 5초 뒤에 다시 1단 점프로 돌려놓기
+    FTimerHandle SweetPotatoTimer;
+    GetWorldTimerManager().SetTimer(SweetPotatoTimer, [this]()
+        {
+            JumpMaxCount = 1;
+        }, 5.0f, false);
 }
 
 void AFPPlayerCharacter::Multicast_PlayItemEffect_Implementation(
     EItemType UsedItem)
 {
     // TODO: 아이템별 이펙트/사운드/애니메이션 몽타주 재생
+    // 1. 바구니에 해당 아이템용 효과가 들어있는지 확인
+    if (ItemEffects.Contains(UsedItem))
+    {
+        UNiagaraSystem* SelectedEffect = ItemEffects[UsedItem];
+        if (SelectedEffect)
+        {
+            // 2. 내 위치(GetActorLocation)에 효과를 생성!
+            // SpawnSystemAtLocation: 특정 위치에 고정 / SpawnSystemAttached: 캐릭터를 따라다님
+            UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+                GetWorld(),
+                SelectedEffect,
+                GetActorLocation(),
+                GetActorRotation()
+            );
+        }
+    }
+
+    // 3. (선택사항) 사운드나 애니메이션 몽타주도 여기서 재생하면 좋습니다.
 }
 
 // ---------------------------------------------------------

@@ -12,6 +12,8 @@ class UCameraComponent;
 class USpringArmComponent;
 class UInputMappingContext;
 class UInputAction;
+class UNiagaraSystem;
+class UNiagaraComponent;
 
 UENUM(BlueprintType)
 enum class EItemType : uint8
@@ -164,6 +166,13 @@ protected:
 
     UFUNCTION()
     void OnRep_CurrentItem();   // 아이템 UI 갱신 트리거
+
+    // 아이템 종류별로 나이아가라 에셋을 매칭해서 담아둘 바구니(Map)
+    UPROPERTY(EditAnywhere, Category = "Item|Effect")
+    TMap<EItemType, TObjectPtr<UNiagaraSystem>> ItemEffects;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effect")
+    TObjectPtr<UNiagaraComponent> JumpSmokeComponent;
 
 #pragma endregion
 
