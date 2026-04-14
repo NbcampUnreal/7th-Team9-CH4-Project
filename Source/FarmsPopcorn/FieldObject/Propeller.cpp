@@ -8,19 +8,27 @@ APropeller::APropeller()
 {
     PrimaryActorTick.bCanEverTick = false;
 
+    // 메시 컴포넌트 초기화
     PropellerMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PropellerMesh"));
     RootComponent = PropellerMesh;
-    PropellerMesh->SetCollisionProfileName(TEXT("NoCollision"));
 
+    PropellerMesh->SetCollisionProfileName(TEXT("BlockAllDynamic"));
+    PropellerMesh->SetGenerateOverlapEvents(false);
+
+    // 콜리전 컴포넌트 초기화
     CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
     CollisionComponent->SetupAttachment(RootComponent);
-    CollisionComponent->InitSphereRadius(120.f); 
-    CollisionComponent->SetCollisionProfileName(TEXT("OverlapOnlyPawn")); 
+
+    CollisionComponent->SetCollisionProfileName(TEXT("OverlapOnlyPawn"));
+    CollisionComponent->SetGenerateOverlapEvents(true);
+
+    // 회전 컴포넌트
     RotatingComponent = CreateDefaultSubobject<URotatingMovementComponent>(TEXT("RotatingComponent"));
     RotatingComponent->RotationRate = FRotator(0.f, 360.f, 0.f);
 
     KnockbackStrength = 1500.f;
     ZAxisLaunchVelocity = 600.f;
+    SafeHeightThreshold = 50.f;
 }
 
 void APropeller::BeginPlay()
@@ -41,14 +49,19 @@ void APropeller::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* Oth
 
         if (HitCharacter)
         {
+            float CharacterFootZ = HitCharacter->GetActorLocation().Z - HitCharacter->GetSimpleCollisionHalfHeight();
+            float PropellerZ = GetActorLocation().Z;
+
+            if (CharacterFootZ > PropellerZ + SafeHeightThreshold)
+            {
+                return;
+            }
+           
             FVector LaunchDirection = HitCharacter->GetActorLocation() - GetActorLocation();
-
             LaunchDirection.Z = 0.f;
-
             LaunchDirection.Normalize();
-          
-            FVector LaunchVelocity = LaunchDirection * KnockbackStrength;
 
+            FVector LaunchVelocity = LaunchDirection * KnockbackStrength;
             LaunchVelocity.Z += ZAxisLaunchVelocity;
 
             HitCharacter->LaunchCharacter(LaunchVelocity, true, true);

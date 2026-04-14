@@ -23,7 +23,9 @@ AMine::AMine()
 
     // 변수 기본값
     bIsActive = false;
+    bHasBeenTriggered = false;
     ActivationDelay = 1.0f;
+    ExplosionDelay = 1.0f;
     ExplosionRadius = 300.0f;
     // 넉백 세기
     KnockbackForce = FVector(1200.0f, 1200.0f, 2000.0f);
@@ -47,12 +49,19 @@ void AMine::ActivateMine()
 
 void AMine::OnCharacterDetected(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+    if (bHasBeenTriggered) return;
+
     if (bIsActive && OtherActor && OtherActor != this)
     {
-        // 닿은 액터가 캐릭터인지 확인
+        if (OtherActor == GetInstigator()) return;
+
         if (OtherActor->IsA(ACharacter::StaticClass()))
         {
-            Pop();
+            // 밟았음을 표시
+            bHasBeenTriggered = true;
+
+            // ExplosionDelay 뒤에 호출 타이머 설정
+            GetWorldTimerManager().SetTimer(ExplosionTimerHandle, this, &AMine::Pop, ExplosionDelay, false);
         }
     }
 }
