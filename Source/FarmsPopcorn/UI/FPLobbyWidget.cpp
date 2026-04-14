@@ -160,16 +160,12 @@ void UFPLobbyWidget::OnReadyClicked()
 	}
 	//서버에 준비상태 전달
 	APlayerController* PC = GetWorld()->GetFirstPlayerController();
-	if (PC)
+	if (AFPPlayerController* FPPC = Cast<AFPPlayerController>(PC))
 	{
-		AFPPlayerState* FPS = PC->GetPlayerState<AFPPlayerState>();
-			if (FPS)
-			{
-				FPS->Server_SetReady_Implementation(bIsReady);
-			}
-			UFPUIManagerSubsystem* Storage = GetGameInstance()->GetSubsystem<UFPUIManagerSubsystem>();
-			if (Storage && ListEntryMap.Contains(Storage->SavedNickName))
-				OnPlayerReadyChanged(Storage->SavedNickName, bIsReady);
+		FPPC->SetReady(bIsReady);
+		UFPUIManagerSubsystem* Storage = GetGameInstance()->GetSubsystem<UFPUIManagerSubsystem>();
+		if (Storage && ListEntryMap.Contains(Storage->SavedNickName))
+			OnPlayerReadyChanged(Storage->SavedNickName, bIsReady);
 	}
 }
 

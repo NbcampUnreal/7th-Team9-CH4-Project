@@ -13,6 +13,7 @@ class FARMSPOPCORN_API AFPPlayerState : public APlayerState
 public:
 	AFPPlayerState();
 	
+	virtual void BeginPlay() override;
 	UFUNCTION(Server, Reliable)
 	void Server_SetReady(bool bNewReadyState);
 	
@@ -40,6 +41,11 @@ public:
 	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Character")
 	TSoftObjectPtr<UTexture2D> AssignedCharacterIcon;
 #pragma endregion 	//캐릭터 이름 설정 끝
-
+	
+public:
+	UFUNCTION(BlueprintCallable, Category = "Team")
+	EFPTeamID GetTeamID() const { return TeamID; }
+	
+	
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 };

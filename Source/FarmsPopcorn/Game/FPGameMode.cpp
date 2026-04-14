@@ -1,5 +1,6 @@
 #include "Game/FPGameMode.h"
 #include "FPGameState.h"
+#include "FPGameInstance.h"
 #include "Player/FPPlayerState.h"
 
 
@@ -187,6 +188,7 @@ void AFPGameMode::ChangeTeam(AController* Player)
 	AFPPlayerState* FPPlayerState = Cast<AFPPlayerState>(Player->PlayerState);
 	if (!FPPlayerState) return;
 	UpdateTeamCounts();
+	UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
 	
 	if (FPPlayerState->TeamID == EFPTeamID::TeamRed)
 	{
@@ -196,6 +198,7 @@ void AFPGameMode::ChangeTeam(AController* Player)
 			return;
 		}
 		FPPlayerState->TeamID =EFPTeamID::TeamBlue;
+		GI->SaveTeamID = EFPTeamID::TeamBlue;
 		RedTeamCount--;  
 		BlueTeamCount++;  
 	}else if(FPPlayerState->TeamID == EFPTeamID::TeamBlue)
@@ -206,6 +209,7 @@ void AFPGameMode::ChangeTeam(AController* Player)
 			return;
 		}
 		FPPlayerState->TeamID =EFPTeamID::TeamRed;
+		GI->SaveTeamID = EFPTeamID::TeamRed;
 		RedTeamCount++;  
 		BlueTeamCount--; 
 	}
@@ -331,4 +335,19 @@ UClass* AFPGameMode::GetDefaultPawnClassForController_Implementation(AController
 	}
 	UE_LOG(LogTemp, Error, TEXT("플레이어 %s에게 할당된 캐릭터가 없습니다!"), *InController->GetName());
 	return Super::GetDefaultPawnClassForController_Implementation(InController);
+}
+
+void AFPGameMode::AddScoreToTeam(EFPTeamID InTeamID, int32 ScoreAmount)
+{
+	UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
+	
+	if (InTeamID == EFPTeamID::TeamRed)
+	{
+		RedTeamScore += ScoreAmount;
+		GI->SaveRedScore += ScoreAmount; 
+	}else if (InTeamID == EFPTeamID::TeamBlue)
+	{
+		BlueTeamScore += ScoreAmount;
+		GI->SaveBlueScore += ScoreAmount;
+	}
 }
