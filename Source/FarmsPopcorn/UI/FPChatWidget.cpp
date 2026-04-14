@@ -14,16 +14,11 @@ void UFPChatWidget::NativeConstruct()
 		ChatInputBox->OnTextCommitted.RemoveAll(this);
 		ChatInputBox->OnTextCommitted.AddDynamic(this, &UFPChatWidget::OnChatInputCommitted);
 	}
-	//주기적으로 PendingMessage를 확인하며 타이머
-	if (GetWorld())
+	//델리게이트로 바인딩
+	if (AFPPlayerController* FPC = Cast<AFPPlayerController>(GetOwningPlayer()))
 	{
-		GetWorld()->GetTimerManager().SetTimer(
-			MessageCheckTimerHandle,
-			this,
-			&UFPChatWidget::CheckPendingMessages,
-			0.1f,
-			true
-		);
+		FPC->OnChatMessageReceived.RemoveAll(this);
+		FPC->OnChatMessageReceived.AddUObject(this, &UFPChatWidget::ReceiveMessage);
 	}
 }
 
@@ -82,6 +77,7 @@ void UFPChatWidget::OnChatInputCommitted(const FText& Text, ETextCommit::Type Co
 	if (ChatInputBox)
 	{
 		ChatInputBox->SetText(FText::GetEmpty());
+		ChatInputBox->SetKeyboardFocus();
 	}
 }
 

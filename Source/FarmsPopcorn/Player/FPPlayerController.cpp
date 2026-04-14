@@ -31,23 +31,23 @@ void AFPPlayerController::SetReady(bool bNewReadyState)
 }
 void AFPPlayerController::ServerSendChatMessage_Implementation(const FString& SenderName, const FString& Message)
 {
-	// 빈 문자열이면 전송하지 않음
-	if (SenderName.IsEmpty() || Message.IsEmpty())
-	{
-		return;
-	}
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
-	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	//빈 문자열 무시
+	if (SenderName.IsEmpty() || Message.IsEmpty()) return;
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
 		AFPPlayerController* OtherPC = Cast<AFPPlayerController>(It->Get());
-		if (!OtherPC)
+		if (OtherPC)
 		{
-			continue;
+			// 서버가 각 클라이언트의 'ClientReceiveChatMessage'를 실행시킴
+			OtherPC->ClientReceiveChatMessage(SenderName, Message);
 		}
-		OtherPC->PendingMessages.Add(FPendingChatMessage(SenderName, Message));
+	}
+}
+void AFPPlayerController::ClientReceiveChatMessage_Implementation(const FString& SenderName, const FString& Message)
+{
+	if (OnChatMessageReceived.IsBound())
+	{
+		OnChatMessageReceived.Broadcast(SenderName, Message);
 	}
 }

@@ -23,6 +23,9 @@
 		UPROPERTY(meta = (BindWidgetOptional))
 		class UTextBlock* ERRORTEXT;
 
+		UPROPERTY(EditAnywhere, BlueprintReadwrite, Category = "UI")
+		TSubclassOf<class UUserWidget> LobbyWidgetClass;
+
 	
 		UFUNCTION()
 		void OnRandomClicked();
