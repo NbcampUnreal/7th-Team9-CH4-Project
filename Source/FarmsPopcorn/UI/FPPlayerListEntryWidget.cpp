@@ -18,10 +18,4 @@ void UFPPlayerListEntryWidget::UpdateReadyState(bool bIsReady)
 		ReadyStateText->SetText(
 			FText::FromString(bIsReady ? TEXT("준비완료") : TEXT("대기중"))
 		);
-	//컨트롤러에 레디상태 전달
-	AFPPlayerController* PC = GetOwningPlayer<AFPPlayerController>();
-	if (PC)
-	{
-		PC->SetReady(bIsReady);
-	}
 }

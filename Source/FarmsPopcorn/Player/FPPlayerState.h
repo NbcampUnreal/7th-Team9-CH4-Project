@@ -14,16 +14,23 @@ public:
 	AFPPlayerState();
 	
 	virtual void BeginPlay() override;
+	
+#pragma region Character Ready
 	UFUNCTION(Server, Reliable)
 	void Server_SetReady(bool bNewReadyState);
 	
 	UPROPERTY(BlueprintReadWrite, Replicated, Category = "PlayerState")
 	bool bIsReady = false;	
+private:
+	FTimerHandle ReadyCheckDelayHandle;
 	
-	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Team")
-	EFPTeamID TeamID = EFPTeamID::None;
+#pragma endregion 
+	
+	
 #pragma region Character Setting //캐릭터설정
-	
+	public:
+    	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Team")
+    	EFPTeamID TeamID = EFPTeamID::None;
 	UFUNCTION()
 	void OnRep_CustomPlayerName();
 
