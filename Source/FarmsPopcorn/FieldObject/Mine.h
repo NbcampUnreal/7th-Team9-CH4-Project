@@ -29,6 +29,10 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Mine Settings")
     float ActivationDelay;
 
+    // 밟은 후 폭발까지의 시간
+    UPROPERTY(EditAnywhere, Category = "Mine Settings")
+    float ExplosionDelay;
+
     // 폭발 반경
     UPROPERTY(EditAnywhere, Category = "Mine Settings")
     float ExplosionRadius;
@@ -38,7 +42,10 @@ protected:
     FVector KnockbackForce;
 
     bool bIsActive;
+    bool bHasBeenTriggered;
+
     FTimerHandle ActivationTimerHandle;
+    FTimerHandle ExplosionTimerHandle;
 
     void ActivateMine();
 
