@@ -18,7 +18,8 @@ public class FarmsPopcorn : ModuleRules
             "OnlineSubsystemUtils",
 			"SlateCore",
 			"Slate",
-			"UMG"
+			"UMG",
+            "Niagara"
         });
         PublicIncludePaths.AddRange(new string[]
         {
