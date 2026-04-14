@@ -1,5 +1,5 @@
 ﻿#include "UI/FPChatWidget.h"
-#include "UI/FPLobbyPlayerController.h"
+#include "Player/FPPlayerController.h"
 #include "Components/ScrollBox.h"
 #include "Components/EditableText.h"
 #include "Components/TextBlock.h"
@@ -8,31 +8,28 @@
 void UFPChatWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-
-	UE_LOG(LogTemp, Warning, TEXT("ChatWidget NativeConstruct 호출됨"));
-
-	//엔터키 입력시 바인딩
+	//입력창이 이으면 엔터 입력
 	if (ChatInputBox)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ChatInputBox 바인딩 성공"));
+		ChatInputBox->OnTextCommitted.RemoveAll(this);
 		ChatInputBox->OnTextCommitted.AddDynamic(this, &UFPChatWidget::OnChatInputCommitted);
 	}
-	else
+	//주기적으로 PendingMessage를 확인하며 타이머
+	if (GetWorld())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ChatInputBox 바인딩 실패"));
+		GetWorld()->GetTimerManager().SetTimer(
+			MessageCheckTimerHandle,
+			this,
+			&UFPChatWidget::CheckPendingMessages,
+			0.1f,
+			true
+		);
 	}
-	GetWorld()->GetTimerManager().SetTimer(
-		MessageCheckTimerHandle,
-		this,
-		&UFPChatWidget::CheckPendingMessages,
-		0.1f,
-		true
-	);
-	UE_LOG(LogTemp, Warning, TEXT("타이머 시작됨"));
 }
 
 void UFPChatWidget::ReceiveMessage(const FString& SenderName, const FString& Message)
 {
+	//스크롤 박스가 없으면 종료
 	if (!ChatScrollBox)
 	{
 		return;
@@ -61,69 +58,74 @@ void UFPChatWidget::ReceiveMessage(const FString& SenderName, const FString& Mes
 	ChatScrollBox->AddChild(NewMessage);
 	//최신 메시지로 스크롤
 	ChatScrollBox->ScrollToEnd();
-	//0.1초마다 새로운 메시지 체크
-	GetWorld()->GetTimerManager().SetTimer(
-		MessageCheckTimerHandle,
-		this,
-		&UFPChatWidget::CheckPendingMessages,
-		0.1f,
-		true
-	);
 }
 
 void UFPChatWidget::OnChatInputCommitted(const FText& Text, ETextCommit::Type CommitMethod)
 {
 	UE_LOG(LogTemp, Warning, TEXT("커밋 타입: %d"), (int32)CommitMethod);
 	//엔터키로 전송시 처리
-	if (CommitMethod != ETextCommit::OnEnter)return;
-	FString Message = Text.ToString().TrimStartAndEnd();
+	if (CommitMethod != ETextCommit::OnEnter)
+	{
+		return;
+	}
+	//앞 뒤 공백 제거
+	const FString Message = Text.ToString().TrimStartAndEnd();
+	//빈 메시지는 무시
+	if (Message.IsEmpty())
+	{
+		return;
+	}
 	UE_LOG(LogTemp, Warning, TEXT("메시지: %s"), *Message);
-	//빈 메시지 무시
-	if (Message.IsEmpty()) return;
+	//메시지 전송
 	SendMessage(Message);
 	//입력창 초기화
 	if (ChatInputBox)
-		ChatInputBox->OnTextCommitted.RemoveAll(this);
-	ChatInputBox->SetText(FText::GetEmpty());
-	ChatInputBox->OnTextCommitted.AddDynamic(this, &UFPChatWidget::OnChatInputCommitted);
-
+	{
+		ChatInputBox->SetText(FText::GetEmpty());
+	}
 }
 
 void UFPChatWidget::SendMessage(const FString& Message)
 {
 	//내 닉네임 가져오기
-	UFPUIManagerSubsystem* Storage = GetGameInstance()->GetSubsystem<UFPUIManagerSubsystem>();
-	if (!Storage) return;
-	FString SenderName = Storage->SavedNickName;
-	UE_LOG(LogTemp, Warning, TEXT("전송자: %s / 메시지: %s"), *SenderName, *Message);
+	UFPUIManagerSubsystem* Storage = GetGameInstance() ? GetGameInstance()->GetSubsystem<UFPUIManagerSubsystem>() : nullptr;
+	if (!Storage)
+	{
+		return;
+	}
+	//위젯의 소유 플레이어 호출
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("OwningPlayer 없음"));
+		return;
+	}
 
 
-	//서버에 메시지 전송
-	APlayerController* PC = GetWorld()->GetFirstPlayerController();
-	if (PC)
+	//PlayerCOntroller로 캐스팅
+	AFPPlayerController* FPC = Cast<AFPPlayerController>(PC);
+	if (!FPC)
 	{
-		AFPLobbyPlayerController* FPC = Cast<AFPLobbyPlayerController>(PC);
-		if (FPC)
-			UE_LOG(LogTemp, Warning, TEXT("컨트롤러 캐스트 성공"));
-		FPC->ServerSendChatMessage(SenderName, Message);
+		UE_LOG(LogTemp, Warning, TEXT("FPPlayerComtroller 캐스트 실패"));
+		return;
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("컨트롤러 캐스트 실패"));
-	}
+	//서버로 채팅 전송
+	FPC->ServerSendChatMessage(Storage->SavedNickName, Message);
 }
 void UFPChatWidget::CheckPendingMessages()
 {
-	APlayerController* PC = GetWorld()->GetFirstPlayerController();
-	AFPLobbyPlayerController* FPC = Cast<AFPLobbyPlayerController>(PC);
+	//윚젯의 소유 플레이어 호출
+	APlayerController* PC = GetOwningPlayer();
+	AFPPlayerController* FPC = Cast<AFPPlayerController>(PC);
 	if (!FPC)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("LobbyController 캐스트 실패"));
 		return;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("PendingMessages 크기: %d"), FPC->PendingMessages.Num());
-	for (auto& Pair : FPC->PendingMessages)
-		ReceiveMessage(Pair.Key, Pair.Value);
+	//메시지 하나씩 UI에 표시
+	for (const FPendingChatMessage& Chat : FPC->PendingMessages)
+	{
+		ReceiveMessage(Chat.SenderName, Chat.Message);
+	}
 
 	FPC->PendingMessages.Empty();
 }
