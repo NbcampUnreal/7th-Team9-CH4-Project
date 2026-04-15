@@ -143,6 +143,9 @@ public:
 
     UPROPERTY(VisibleAnywhere, Category = "PR|Item")
     TObjectPtr<UStaticMeshComponent> ItemDisplayMesh;
+
+    virtual void Jump() override;
+
 private:
     // 아이템 사용 실제 처리 (서버에서 실행)
     UFUNCTION(Server, Reliable)
@@ -166,6 +169,12 @@ protected:
 
     UFUNCTION()
     void OnRep_CurrentItem();   // 아이템 UI 갱신 트리거
+
+    //아이템 사용 함수 선언
+    void UseCurrentItem();
+
+    //고구마 효과 지속시간을 관리할 타이머 핸들 선언
+    FTimerHandle SweetPotatoTimerHandle;
 
     // 아이템 종류별로 나이아가라 에셋을 매칭해서 담아둘 바구니(Map)
     UPROPERTY(EditAnywhere, Category = "Item|Effect")
