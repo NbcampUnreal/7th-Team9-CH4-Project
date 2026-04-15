@@ -10,10 +10,6 @@ void AFPPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	FInputModeGameOnly InputMode;
-	SetInputMode(InputMode);
-	bShowMouseCursor = false;
-	
 	if (IsLocalController())
 	{
 		UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();

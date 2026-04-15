@@ -18,6 +18,15 @@ AFPFinishLine::AFPFinishLine()
 void AFPFinishLine::BeginPlay()
 {
     Super::BeginPlay();
+    
+   
+    if ( AFPGameMode* GM = GetWorld()->GetAuthGameMode<AFPGameMode>())
+    {
+        UE_LOG(LogTemp, Warning,
+               TEXT("현재 점수 RED : %d, BLUE : %d"),
+                GM->RedTeamScore, GM->BlueTeamScore);
+    }
+    
 }
 
 void AFPFinishLine::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
@@ -26,40 +35,33 @@ void AFPFinishLine::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* 
     if (!HasAuthority()) return;
 
     AFPPlayerCharacter* OverlappedChar = Cast<AFPPlayerCharacter>(OtherActor);
-    if (!OverlappedChar)
+    if (!OverlappedChar) return;
+
+    AFPPlayerState* PS = OverlappedChar->GetPlayerState<AFPPlayerState>();
+    if (PS)
     {
-        // 2. 캐스팅 실패 이유 확인 (다른 컴포넌트나 액터일 경우)
-        UE_LOG(LogTemp, Error, TEXT("FinishLine: Overlapped Actor is NOT AFPPlayerCharacter!"));
-        return;
-    }
-    if (OverlappedChar)
-    {
-        AFPPlayerState* PS = OverlappedChar->GetPlayerState<AFPPlayerState>();
-        if (PS)
+        EFPTeamID MyTeam = PS->GetTeamID();
+        AFPGameMode* GM = GetWorld()->GetAuthGameMode<AFPGameMode>();
+        
+        if (GM)
         {
-            EFPTeamID MyTeam = PS->GetTeamID();
-            FString TeamName = (MyTeam == EFPTeamID::TeamRed) ? TEXT("RED") : TEXT("BLUE");
+            UE_LOG(LogTemp, Warning, TEXT("점수 추가 전 - Red: %d, Blue: %d"), 
+                GM->RedTeamScore, GM->BlueTeamScore);
+            
+            GM->AddScoreToTeam(MyTeam, 1);
+            
+            UE_LOG(LogTemp, Warning, TEXT("점수 추가 후 - Red: %d, Blue: %d"), 
+                GM->RedTeamScore, GM->BlueTeamScore);
 
-            AFPGameMode* GM = GetWorld()->GetAuthGameMode<AFPGameMode>();
-            if (GM)
-            {
-                GM->AddScoreToTeam(MyTeam, 1);
-                UE_LOG(LogTemp, Warning,
-                       TEXT("플레이어의 팀 %s의 점수를 올랐습니다. RED : %d, BLUE : %d"),
-                       *TeamName, GM->RedTeamScore, GM->BlueTeamScore);
+            CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-                // 중복 처리 방지
-                CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-                // 다음 레벨 이동 
-                GetWorld()->GetTimerManager().SetTimer(
-                    NextLevelHandle,
-                    this,
-                    &AFPFinishLine::NextMapTravel,
-                    3.0f, // 3초 딜레이
-                    false
-                );
-            }
+            GetWorld()->GetTimerManager().SetTimer(
+                NextLevelHandle,
+                this,
+                &AFPFinishLine::NextMapTravel,
+                3.0f,
+                false
+            );
         }
     }
 }
