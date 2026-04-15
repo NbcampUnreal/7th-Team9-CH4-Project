@@ -16,7 +16,13 @@ class FARMSPOPCORN_API AFPFinishLine : public AActor
 public:
 	// Sets default values for this actor's properties
 	AFPFinishLine();
+	// 레벨 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Level")
+	TSoftObjectPtr<UWorld> NextLevel; // level 이동
+	// 다음 레벨 이동
+	void NextMapTravel();
 	
+	FTimerHandle NextLevelHandle;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

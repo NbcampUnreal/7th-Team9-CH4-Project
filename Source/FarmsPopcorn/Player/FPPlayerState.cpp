@@ -13,16 +13,37 @@ AFPPlayerState::AFPPlayerState()
 void AFPPlayerState::BeginPlay()
 {
 	Super::BeginPlay();
-	if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
+	if (GetNetMode() != NM_DedicatedServer) // 클라이언트에서만 수행
 	{
-		CustomPlayerName = GI->SaveNickName;
-		TeamID = GI->SaveTeamID;
-		AssignedCharacterClass = GI->SaveCharacterClass;
-		AssignedCharacterID = GI->SaveCharacterID;
+		if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
+		{
+			// AssignedCharacterClass가 없을 때만 가져오도록 방어 코드 추가
+			if (!AssignedCharacterClass)
+			{
+				CustomPlayerName = GI->SaveNickName;
+				TeamID = GI->SaveTeamID;
+				AssignedCharacterClass = GI->SaveCharacterClass;
+				AssignedCharacterID = GI->SaveCharacterID;
+			}
+		}
 	}
 
 }
+void AFPPlayerState::CopyProperties(APlayerState* PlayerState)
+{
+	Super::CopyProperties(PlayerState);
 
+	// 새 레벨에서 만들어진 PlayerState로 내 정보를 복사함
+	AFPPlayerState* NewPS = Cast<AFPPlayerState>(PlayerState);
+	if (NewPS)
+	{
+		NewPS->AssignedCharacterID = this->AssignedCharacterID;
+		NewPS->AssignedCharacterClass = this->AssignedCharacterClass;
+		NewPS->AssignedCharacterName = this->AssignedCharacterName;
+		NewPS->AssignedCharacterIcon = this->AssignedCharacterIcon;
+		NewPS->TeamID = this->TeamID;
+	}
+}
 
 void AFPPlayerState::Server_SetReady_Implementation(bool bNewReadyState)
 {
