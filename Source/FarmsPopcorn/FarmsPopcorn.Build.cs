@@ -20,7 +20,8 @@ public class FarmsPopcorn : ModuleRules
 			"Slate",
 			"UMG",
             "Niagara",
-			"NavigationSystem"
+			"NavigationSystem",
+			"AIModule"
         });
         PublicIncludePaths.AddRange(new string[]
         {

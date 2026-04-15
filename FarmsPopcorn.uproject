@@ -10,8 +10,7 @@
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
 				"Engine",
-				"UMG",
-				"AIModule"
+				"UMG"
 			]
 		},
 		{
@@ -29,16 +28,22 @@
 			]
 		},
 		{
-			"Name": "OnlineServicesEOS",
-			"Enabled": true
+			"Name": "EOSIntegrationKit",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/dba0aa05bdd144e69405653a387ad63e"
 		},
 		{
-			"Name": "OnlineSubsystemEOS",
-			"Enabled": true
+			"Name": "Fab",
+			"Enabled": false
 		},
 		{
-			"Name": "SocketSubsystemEOS",
-			"Enabled": true
+			"Name": "FabLauncher",
+			"Enabled": false,
+			"SupportedTargetPlatforms": [
+				"Win64",
+				"Mac",
+				"Linux"
+			]
 		}
 	]
 }
