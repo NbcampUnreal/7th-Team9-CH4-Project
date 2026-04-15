@@ -68,6 +68,14 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> RoundResultWidgetClass;
 
+	
+	UFUNCTION(Client, Reliable)
+	void Client_SaveCharacterToInstance(FName CharID, TSubclassOf<APawn> CharClass);
+	// 서버에게 캐릭터 복구 요청 (Server RPC)
+	UFUNCTION(Server, Reliable)
+	void Server_RestoreCharacter(FName SavedID, TSubclassOf<APawn> SavedClass);
+	
+	virtual void BeginPlay() override;
 	//위젯이 읽어갈 채팅
 	UPROPERTY()
 	TArray<FPendingChatMessage> PendingMessages;

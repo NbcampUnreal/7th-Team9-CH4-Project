@@ -63,6 +63,7 @@ AFPPlayerCharacter::AFPPlayerCharacter()
     ItemVisualMesh->SetVisibility(false);
     ItemVisualMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 아이템 외형이 물리 충돌을 일으키지 않게 함
 
+
     // 1. 나이아가라 컴포넌트 생성
     JumpSmokeComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("JumpSmokeComponent"));
 
@@ -214,6 +215,8 @@ void AFPPlayerCharacter::Server_UseItem_Implementation()
 }
 
 
+
+
 void AFPPlayerCharacter::UseFan()
 {
     // 선풍기: 주변 일정 범위 적 캐릭터에게 LaunchCharacter() 적용
@@ -284,14 +287,28 @@ void AFPPlayerCharacter::UseSweetPotato()
 {
     // 고구마: 이중점프 활성화
     JumpMaxCount = 2;
-    Multicast_PlayItemEffect(EItemType::SweetPotato);
+    //Multicast_PlayItemEffect(EItemType::SweetPotato);
 
     // (팁) 5초 뒤에 다시 1단 점프로 돌려놓기
-    FTimerHandle SweetPotatoTimer;
-    GetWorldTimerManager().SetTimer(SweetPotatoTimer, [this]()
+    //FTimerHandle SweetPotatoTimer;
+    GetWorldTimerManager().SetTimer(SweetPotatoTimerHandle, [this]()
         {
             JumpMaxCount = 1;
         }, 5.0f, false);
+}
+
+void AFPPlayerCharacter::Jump()
+{
+    // 만약 고구마를 먹어서 점프 횟수가 2인 상태이고, 
+    // 지금 한 번 점프한 상태(공중)에서 다시 점프를 누른 거라면?
+    if (JumpMaxCount == 2 && JumpCurrentCount == 1)
+    {
+        // 이때만 고구마 이펙트 실행!
+        Multicast_PlayItemEffect(EItemType::SweetPotato);
+    }
+
+    // "원래 언리얼이 하던 점프 기능"은 그대로 수행해! 라는 뜻입니다.
+    Super::Jump();
 }
 
 void AFPPlayerCharacter::Multicast_PlayItemEffect_Implementation(
@@ -356,6 +373,23 @@ void AFPPlayerCharacter::OnRep_CurrentItem()
     if (SelectedMesh)
     {
         ItemVisualMesh->SetStaticMesh(SelectedMesh);
+    }
+}
+
+void AFPPlayerCharacter::UseCurrentItem()// Z키와 연결된 함수
+{
+    switch (CurrentItem)
+    {
+    case EItemType::Fan:
+        UseFan();
+        break;
+
+    case EItemType::SweetPotato:
+        UseSweetPotato();
+        break;
+
+    default:
+        break;
     }
 }
 

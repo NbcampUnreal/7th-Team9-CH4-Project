@@ -14,7 +14,8 @@ public:
 	AFPPlayerState();
 	
 	virtual void BeginPlay() override;
-	
+	virtual void CopyProperties(APlayerState* PlayerState) override;
+
 #pragma region Character Ready
 	UFUNCTION(Server, Reliable)
 	void Server_SetReady(bool bNewReadyState);
