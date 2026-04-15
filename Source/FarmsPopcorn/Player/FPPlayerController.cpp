@@ -1,4 +1,6 @@
 ﻿#include "Player/FPPlayerController.h"
+#include "Blueprint/UserWidget.h"
+#include "UI/FPResultWidget.h"
 #include "FPPlayerState.h"
 #include "Game/FPGameMode.h"
 #include "Engine/World.h"
@@ -44,6 +46,40 @@ void AFPPlayerController::SetReady(bool bNewReadyState)
 	if (AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode()))
 	{
 		GM->CheckAllPlayersReady(); 
+	}
+}
+void AFPPlayerController::ClientHideRoundResult_Implementation()
+{
+	if (RoundResultWidget && RoundResultWidget->IsInViewport())
+	{
+		RoundResultWidget->RemoveFromViewport();//뷰포트 제거
+		FInputModeGameOnly InputMode;
+		SetInputMode(InputMode);
+		bShowMouseCursor = false;
+	}
+}
+void AFPPlayerController::ClientShowRoundResult_Implementation()
+{
+	if (!RoundResultWidgetClass) return;
+	//위젯 생성
+	if (!RoundResultWidget)
+	{
+		RoundResultWidget = CreateWidget<UUserWidget>(this, RoundResultWidgetClass);
+	}
+	if (RoundResultWidget && !RoundResultWidget->IsInViewport())
+	{
+		RoundResultWidget->AddToViewport(10);
+
+
+		UFPResultWidget* RoundUI = Cast<UFPResultWidget>(RoundResultWidget);
+		if (RoundUI)
+		{
+			RoundUI->UpdateRoundResult();
+		}
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(RoundResultWidget->TakeWidget());
+		SetInputMode(InputMode);
+		bShowMouseCursor = true;
 	}
 }
 
@@ -95,5 +131,24 @@ void AFPPlayerController::ClientReceiveChatMessage_Implementation(const FString&
 	if (OnChatMessageReceived.IsBound())
 	{
 		OnChatMessageReceived.Broadcast(SenderName, Message);
+	}
+}
+void AFPPlayerController::ClientShowFinalResult_Implementation()
+{
+
+}
+void AFPPlayerController::DebugEndRound()
+{
+	// 서버인지 확인
+	if (HasAuthority())
+	{
+		if (AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode()))
+		{
+			// 테스트용 점수 주고 라운드 종료
+			GM->AddScoreToTeam(EFPTeamID::TeamRed, 10);
+			GM->EndRound();
+
+			UE_LOG(LogTemp, Warning, TEXT("디버그: 라운드 강제 종료 실행!"));
+		}
 	}
 }
