@@ -4,14 +4,6 @@
 #include "GameFramework/Actor.h"
 #include "MovingPlatform.generated.h"
 
-UENUM(BlueprintType)
-enum class EMoveDirection : uint8
-{
-    UpDown    UMETA(DisplayName = "Up Down"),
-    LeftRight UMETA(DisplayName = "Left Right"),
-    ForwardBack UMETA(DisplayName = "Forward Back")
-};
-
 UCLASS()
 class FARMSPOPCORN_API AMovingPlatform : public AActor
 {
@@ -29,19 +21,16 @@ protected:
 
     // --- 에디터 설정 변수 ---
 
-    // 이동 방향 선택 (위아래 / 좌우 / 앞뒤)
-    UPROPERTY(EditAnywhere, Category = "Settings")
-    EMoveDirection MoveDirection = EMoveDirection::UpDown;
+    // 목표 지점 오프셋 (에디터에서 화살표나 수치로 직접 조정 가능)
+    // 예: (500, 0, 0)이면 X축으로 500만큼 갔다가 돌아옴
+    UPROPERTY(EditAnywhere, Category = "Settings", meta = (MakeEditWidget = true))
+    FVector TargetOffset = FVector(0.0f, 0.0f, 500.0f);
 
-    // 이동 속도
+    // 이동 속도 (0.0 ~ 1.0 사이를 왕복하는 속도)
     UPROPERTY(EditAnywhere, Category = "Settings")
-    float Speed = 200.0f;
-
-    // 이동 거리
-    UPROPERTY(EditAnywhere, Category = "Settings")
-    float Distance = 500.0f;
+    float MoveSpeed = 1.0f;
 
 private:
     FVector StartLocation;
-    FVector MoveAxis; // 실제 이동할 축 벡터
+    FVector TargetLocation;
 };
