@@ -4,6 +4,11 @@
 #include "Player/FPPlayerState.h"
 
 
+AFPGameMode::AFPGameMode()
+{
+	bUseSeamlessTravel = true;
+}
+
 void AFPGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	if (AvatarClasses.IsEmpty() && CharacterDataTable)
@@ -18,29 +23,35 @@ void AFPGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// GameInstance에서 저장된 캐릭터 정보 가져오기
-	UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
-	if (GI && GameState)
-	{
-		for (APlayerState* PS : GameState->PlayerArray)
-		{
-			AFPPlayerState* FPPlayerState = Cast<AFPPlayerState>(PS);
-			if (FPPlayerState && GI->SaveCharacterClass)
-			{
-				// GameInstance의 값으로 플레이어 업데이트
-				FPPlayerState->AssignedCharacterID = GI->SaveCharacterID;
-				FPPlayerState->AssignedCharacterClass = GI->SaveCharacterClass;
-				FPPlayerState->AssignedCharacterName = GI->SaveCharacterName;
-				FPPlayerState->AssignedCharacterIcon = GI->SaveCharacterIcon;
-				
-				UE_LOG(LogTemp, Warning, 
-					TEXT("플레이어 %s - 인게임에서 캐릭터 복원: %s"),
-					*FPPlayerState->GetPlayerName(),
-					*GI->SaveCharacterID.ToString());
-			}
-		}
-	}
+	// // GameInstance에서 저장된 캐릭터 정보 가져오기
+	// UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
+	// if (GI && GameState)
+	// {
+	// 	for (APlayerState* PS : GameState->PlayerArray)
+	// 	{
+	// 		AFPPlayerState* FPPlayerState = Cast<AFPPlayerState>(PS);
+	// 		if (FPPlayerState && GI->SaveCharacterClass)
+	// 		{
+	// 			// GameInstance의 값으로 플레이어 업데이트
+	// 			FPPlayerState->AssignedCharacterID = GI->SaveCharacterID;
+	// 			FPPlayerState->AssignedCharacterClass = GI->SaveCharacterClass;
+	// 			FPPlayerState->AssignedCharacterName = GI->SaveCharacterName;
+	// 			FPPlayerState->AssignedCharacterIcon = GI->SaveCharacterIcon;
+	// 			
+	// 			UE_LOG(LogTemp, Warning, 
+	// 				TEXT("플레이어 %s - 인게임에서 캐릭터 복원: %s"),
+	// 				*FPPlayerState->GetPlayerName(),
+	// 				*GI->SaveCharacterID.ToString());
+	// 		}
+	// 	}
+	// }
 }
+
+void AFPGameMode::HandleSeamlessTravelPlayer(AController*& C)
+{
+	Super::HandleSeamlessTravelPlayer(C);
+}
+
 //아바타 데이터테이블 정보확인
 void AFPGameMode::AssignCharacterToPlayer(APlayerController* PlayerController)
 {
@@ -63,7 +74,13 @@ void AFPGameMode::AssignCharacterToPlayer(APlayerController* PlayerController)
 		UE_LOG(LogTemp, Error, TEXT("AssignCharacterToPlayer: FPPlayerState 캐스트 실패"));
 		return;
 	}
- 
+	if (FPPlayerState->AssignedCharacterClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("플레이어 %s는 이미 캐릭터가 할당되어 있습니다: %s"),
+			*FPPlayerState->GetPlayerName(),
+			*FPPlayerState->AssignedCharacterID.ToString());
+		return;
+	}
 	// ===== 아바타 검증 =====
 	if (AvatarClasses.IsEmpty())
 	{
@@ -116,14 +133,14 @@ void AFPGameMode::AssignCharacterToPlayer(APlayerController* PlayerController)
 			FPPlayerState->AssignedCharacterName = RowData->CharacterName;
 			FPPlayerState->AssignedCharacterIcon = RowData->CharacterIcon;
  
-			UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
-			if (GI)
-			{
-				GI->SaveCharacterID = RowPair.Key;
-				GI->SaveCharacterClass = SelectedClass;
-				GI->SaveCharacterName = RowData->CharacterName;
-				GI->SaveCharacterIcon = RowData->CharacterIcon;
-			}
+			// UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
+			// if (GI)
+			// {
+			// 	GI->SaveCharacterID = RowPair.Key;
+			// 	GI->SaveCharacterClass = SelectedClass;
+			// 	GI->SaveCharacterName = RowData->CharacterName;
+			// 	GI->SaveCharacterIcon = RowData->CharacterIcon;
+			// }
 			UsedCharacterIDs.Add(RowPair.Key);
 			
 			UE_LOG(LogTemp, Warning,
@@ -395,13 +412,25 @@ void AFPGameMode::DelayedReadyPlayerCheck()
 }
 void AFPGameMode::ExecuteMapTravel()
 {
-	// 인게임 레벨로 이동
-	UWorld* World = GetWorld();
-	// 게임 
-	if (World)
+	if (NextLevel.IsNull()) // 할당 여부 체크
 	{
-		GetWorld()->ServerTravel("/Game/Maps/InGameMap?listen?Phase=InGame");
+		UE_LOG(LogTemp, Error, TEXT("ExecuteMapTravel: NextLevel이 블루프린트에서 설정되지 않았습니다!"));
+		return;
 	}
+
+	// 소프트 포인터에서 전체 경로 문자열 추출 (가장 확실한 방법)
+	FString LevelPath = NextLevel.ToSoftObjectPath().GetLongPackageName();
+    
+	if (LevelPath.IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("ExecuteMapTravel: 유효한 레벨 경로를 찾을 수 없습니다!"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("서버 트래블 시도 중: %s"), *LevelPath);
+
+	// 마지막에 ?listen 옵션을 붙여주는 것이 멀티플레이에서 안전합니다.
+	GetWorld()->ServerTravel(LevelPath + TEXT("?listen"), true);
 }
 
 void AFPGameMode::ResetAvatarSelection()
@@ -457,6 +486,7 @@ UClass* AFPGameMode::GetDefaultPawnClassForController_Implementation(AController
 void AFPGameMode::AddScoreToTeam(EFPTeamID InTeamID, int32 ScoreAmount)
 {
 	UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
+	if (!GI)return;
 	
 	if (InTeamID == EFPTeamID::TeamRed)
 	{

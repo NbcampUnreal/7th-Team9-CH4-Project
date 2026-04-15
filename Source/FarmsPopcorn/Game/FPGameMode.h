@@ -13,10 +13,11 @@ class FARMSPOPCORN_API AFPGameMode : public AGameMode
     GENERATED_BODY()
     
 public:
+    AFPGameMode();
     
     virtual void PostLogin(APlayerController* NewPlayer) override;
     virtual void BeginPlay() override;
-
+    virtual void HandleSeamlessTravelPlayer(AController*& C) override;
 
 #pragma region Team & Avatar // 팀 & 아바타
 public:
