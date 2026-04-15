@@ -23,28 +23,16 @@ void AFPGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// // GameInstance에서 저장된 캐릭터 정보 가져오기
-	// UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
-	// if (GI && GameState)
-	// {
-	// 	for (APlayerState* PS : GameState->PlayerArray)
-	// 	{
-	// 		AFPPlayerState* FPPlayerState = Cast<AFPPlayerState>(PS);
-	// 		if (FPPlayerState && GI->SaveCharacterClass)
-	// 		{
-	// 			// GameInstance의 값으로 플레이어 업데이트
-	// 			FPPlayerState->AssignedCharacterID = GI->SaveCharacterID;
-	// 			FPPlayerState->AssignedCharacterClass = GI->SaveCharacterClass;
-	// 			FPPlayerState->AssignedCharacterName = GI->SaveCharacterName;
-	// 			FPPlayerState->AssignedCharacterIcon = GI->SaveCharacterIcon;
-	// 			
-	// 			UE_LOG(LogTemp, Warning, 
-	// 				TEXT("플레이어 %s - 인게임에서 캐릭터 복원: %s"),
-	// 				*FPPlayerState->GetPlayerName(),
-	// 				*GI->SaveCharacterID.ToString());
-	// 		}
-	// 	}
-	// }
+	UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
+	if (GI)
+	{
+		RedTeamScore = GI->SaveRedScore;
+		BlueTeamScore = GI->SaveBlueScore;
+        
+		UE_LOG(LogTemp, Warning, 
+			TEXT("점수 - Red: %d, Blue: %d"), 
+			RedTeamScore, BlueTeamScore);
+	}
 }
 
 void AFPGameMode::HandleSeamlessTravelPlayer(AController*& C)
