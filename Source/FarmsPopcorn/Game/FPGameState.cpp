@@ -1,6 +1,5 @@
-
+﻿
 #include "Game/FPGameState.h"
-
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
@@ -69,6 +68,12 @@ void AFPGameState::HandleGameStarted()
 
 void AFPGameState::HandleResultStarted()
 {
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	AFPPlayerController* FPPC = Cast <AFPPlayerController>(PC);
+	if (FPPC)
+	{
+		FPPC->ClientShowRoundResult();
+	}
 }
 
 
@@ -87,6 +92,7 @@ void AFPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AFPGameState, GamePhase);
 	DOREPLIFETIME(AFPGameState, RedTeamScore);
 	DOREPLIFETIME(AFPGameState, BlueTeamScore);
-	
-	
+	DOREPLIFETIME(AFPGameState, RedTotalScore);
+	DOREPLIFETIME(AFPGameState, BlueTotalScore);
+	DOREPLIFETIME(AFPGameState, CurrentRound);
 }

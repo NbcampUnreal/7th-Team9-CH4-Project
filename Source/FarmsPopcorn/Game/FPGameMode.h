@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameMode.h"
@@ -99,4 +99,22 @@ public:
     
     
 #pragma endregion 
+#pragma region Round //라운드 관리
+public:
+    //라운드 종료
+    UFUNCTION(BlueprintCallable, Category = "Round")
+    void EndRound();
+    //결과창 띄우는 시간
+    UPROPERTY(EditDefaultsOnly, Category = "Round")
+    float ResultDisplayTime = 5.0f;
+    //최대 라운드 수
+    UPROPERTY(EditDefaultsOnly, Category = "Round")
+    int32 MaxRounds = 5;
+    UPROPERTY(BlueprintReadOnly, Category = "Round")
+    int32 CurrentRound = 1;
+private:
+    FTimerHandle RoundResultTimerHandle;
+    void StartNextRound();
+#pragma endregion
+
 };

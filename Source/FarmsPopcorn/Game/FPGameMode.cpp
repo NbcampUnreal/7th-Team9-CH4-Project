@@ -1,4 +1,4 @@
-#include "Game/FPGameMode.h"
+﻿#include "Game/FPGameMode.h"
 #include "FPGameState.h"
 #include "FPGameInstance.h"
 #include "Player/FPPlayerState.h"
@@ -456,15 +456,112 @@ UClass* AFPGameMode::GetDefaultPawnClassForController_Implementation(AController
 
 void AFPGameMode::AddScoreToTeam(EFPTeamID InTeamID, int32 ScoreAmount)
 {
-	UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
-	
 	if (InTeamID == EFPTeamID::TeamRed)
 	{
 		RedTeamScore += ScoreAmount;
-		GI->SaveRedScore += ScoreAmount; 
-	}else if (InTeamID == EFPTeamID::TeamBlue)
+	}
+	else if (InTeamID == EFPTeamID::TeamBlue)
 	{
 		BlueTeamScore += ScoreAmount;
-		GI->SaveBlueScore += ScoreAmount;
 	}
+
+	// 2. GameInstance를 딱 한 번만 가져와서 안전하게 저장합니다.
+	UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
+
+	// 3. GI가 유효할 때만 점수를 누적 기록합니다. (안전장치)
+	if (GI)
+	{
+		if (InTeamID == EFPTeamID::TeamRed)
+		{
+			GI->SaveRedScore += ScoreAmount;
+		}
+		else if (InTeamID == EFPTeamID::TeamBlue)
+		{
+			GI->SaveBlueScore += ScoreAmount;
+		}
+	}
+	else
+	{
+		// GI를 찾을 수 없을 때 로그 출력 (디버깅용)
+		UE_LOG(LogTemp, Error, TEXT("AddScoreToTeam: FPGameInstance를 찾을 수 없습니다! 프로젝트 세팅을 확인하세요."));
+	}
+}
+
+void AFPGameMode::EndRound()
+{
+	//점수 동기화
+	AFPGameState* GS = GetGameState<AFPGameState>();
+	if (GS)
+	{
+		GS->RedTeamScore = RedTeamScore;
+		GS->BlueTeamScore = BlueTeamScore;
+		
+		GS->SetGamePhase(EFPGamePhase::Result);
+
+		if (RedTeamScore > BlueTeamScore)
+		{
+			GS->RoundWinnerTeam = EFPTeamID::TeamRed;
+		}
+		else if (BlueTeamScore > RedTeamScore)
+		{
+			GS->RoundWinnerTeam = EFPTeamID::TeamBlue;
+		}
+	}
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		AFPPlayerController* PC = Cast <AFPPlayerController>(It->Get());
+		if (PC)
+		{
+			PC->ClientShowRoundResult();
+		}
+	}
+	//N초후 다음 라운드 시작
+	GetWorldTimerManager().SetTimer(
+		RoundResultTimerHandle,
+		this,
+		&AFPGameMode::StartNextRound,
+		ResultDisplayTime,
+		false
+	);
+}
+
+void AFPGameMode::StartNextRound()
+{
+	AFPGameState* GS = GetGameState<AFPGameState>();
+	if (!GS) return;
+	//이번 라운드 점수를누적 총점에 합산
+	GS->RedTotalScore += GS->RedTeamScore;
+	GS->BlueTotalScore += GS->BlueTeamScore;
+
+	//최종 라운드면 최종결과창
+	if (CurrentRound >= MaxRounds)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("=== 게임 종료 ==="));
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			AFPPlayerController* PC = Cast<AFPPlayerController>(It->Get());
+			if (PC) PC->ClientShowFinalResult();
+		}
+		return;
+	}
+	//다음 라운드 준비
+	CurrentRound++;
+	GS->CurrentRound = CurrentRound;
+	//라운드 점수만 초기화(누적은 유지)
+	RedTeamScore = 0;
+	BlueTeamScore = 0;
+	GS->RedTeamScore = 0;
+	GS->BlueTeamScore = 0;
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		AFPPlayerController* PC = Cast<AFPPlayerController>(It->Get());
+		if (PC)
+		{
+			PC->ClientHideRoundResult();
+		}
+	}
+
+	GS->SetGamePhase(EFPGamePhase::InGame);
+
+	UE_LOG(LogTemp, Warning, TEXT("=== Round %d 시작 ==="), CurrentRound);
 }

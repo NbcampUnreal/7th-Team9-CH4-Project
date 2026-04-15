@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameState.h"
+#include "Player/FPPlayerController.h"
 #include "Core/FPTeamID.h"
 #include "FPGameState.generated.h"
 
@@ -50,6 +51,18 @@ public:
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "FP|Score")
 	int32 BlueTeamScore = 0;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "FP|Score")
+	int32 RedTotalScore = 0;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "FP|Score")
+	int32 BlueTotalScore = 0;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "FP|Score")
+	EFPTeamID RoundWinnerTeam;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "FP|Round")
+	int32 CurrentRound = 1;
 #pragma endregion GameState
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
