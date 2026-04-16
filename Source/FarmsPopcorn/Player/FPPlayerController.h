@@ -76,6 +76,7 @@ public:
 	void Server_RestoreCharacter(FName SavedID, TSubclassOf<APawn> SavedClass);
 	
 	virtual void BeginPlay() override;
+	virtual void BeginPlayingState() override;
 	//위젯이 읽어갈 채팅
 	UPROPERTY()
 	TArray<FPendingChatMessage> PendingMessages;
@@ -85,4 +86,6 @@ private:
 	UUserWidget* RoundResultWidget = nullptr;
 	UPROPERTY()
 	UUserWidget* FinalResultWidget = nullptr;
+
+	void ApplyGameplayInputMode();
 };

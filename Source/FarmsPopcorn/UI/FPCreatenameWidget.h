@@ -9,8 +9,9 @@
 	{
 		GENERATED_BODY()
 	
-	public:
-		virtual void NativeConstruct() override;
+public:
+	virtual void NativeConstruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	protected:
 		UPROPERTY(meta = (BindWidget))
 		class UEditableTextBox* NickNameTextBox; //입력창
