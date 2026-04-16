@@ -32,6 +32,7 @@ void UFPCreatenameWidget::NativeConstruct()
 		PC->bShowMouseCursor = true;
 		FInputModeUIOnly Mode;
 		Mode.SetWidgetToFocus(TakeWidget());
+		Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		PC->SetInputMode(Mode);
 	}
 
@@ -50,6 +51,26 @@ void UFPCreatenameWidget::NativeConstruct()
 	{
 		CancleButton->OnClicked.RemoveDynamic(this, &UFPCreatenameWidget::OnCancelClicked);
 		CancleButton->OnClicked.AddDynamic(this, &UFPCreatenameWidget::OnCancelClicked);
+	}
+}
+
+void UFPCreatenameWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC)
+	{
+		PC = GetWorld()->GetFirstPlayerController();
+	}
+
+	if (PC && !PC->bShowMouseCursor)
+	{
+		PC->bShowMouseCursor = true;
+		FInputModeUIOnly Mode;
+		Mode.SetWidgetToFocus(TakeWidget());
+		Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		PC->SetInputMode(Mode);
 	}
 }
 //랜덤닉네임
