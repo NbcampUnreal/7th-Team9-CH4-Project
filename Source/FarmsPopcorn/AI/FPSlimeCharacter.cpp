@@ -46,13 +46,13 @@ void AFPSlimeCharacter::SetBlinkRed(bool bBlink)
 void AFPSlimeCharacter::ApplyKnockback(ACharacter* Target)
 {
 	if (!HasAuthority()) return;
-	
 	if (!Target) return;
-	
+
 	FVector LaunchDir = Target->GetActorLocation() - GetActorLocation();
 	LaunchDir.Normalize();
 	LaunchDir.Z = FMath::Max(LaunchDir.Z, 0.5f);
-	
+
 	FVector FinalVelocity = LaunchDir * Knockback;
+	Target->GetCharacterMovement()->SetMovementMode(MOVE_Falling);
 	Target->LaunchCharacter(FinalVelocity, true, true);
 }
