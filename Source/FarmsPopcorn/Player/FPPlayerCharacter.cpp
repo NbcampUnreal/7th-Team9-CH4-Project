@@ -12,6 +12,7 @@
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "NiagaraComponent.h"
+#include "Engine/LocalPlayer.h"  //추가사항
 
 AFPPlayerCharacter::AFPPlayerCharacter()
 {
@@ -34,7 +35,7 @@ AFPPlayerCharacter::AFPPlayerCharacter()
 
     // 스프링암 (PDF: TargetArmLength = 400)
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-    SpringArm->TargetArmLength = 400.f;// 카메라를 캐릭터로부터 400cm 뒤로
+    SpringArm->TargetArmLength = 1600.f;// 카메라를 캐릭터로부터 400cm 뒤로
     SpringArm->bUsePawnControlRotation = true;// 마우스로 카메라 회전 가능
     SpringArm->SetupAttachment(GetRootComponent());
 
@@ -100,6 +101,21 @@ void AFPPlayerCharacter::BeginPlay()
 
     EILPS->AddMappingContext(InputMappingContext, 0);// 에디터에서 설정한 입력 매핑(WASD 등)을 실제로 활성화
     OnRep_CharacterIndex();
+
+   // TryApplyInputMappingContext();   //추가사항
+   // OnRep_CharacterIndex();  //추가사항
+}
+
+void AFPPlayerCharacter::PossessedBy(AController* NewController)
+{
+    Super::PossessedBy(NewController);
+    TryApplyInputMappingContext();
+}
+
+void AFPPlayerCharacter::OnRep_Controller()
+{
+    Super::OnRep_Controller();
+    TryApplyInputMappingContext();
 }
 
 
@@ -108,6 +124,7 @@ void AFPPlayerCharacter::BeginPlay()
 void AFPPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
+    TryApplyInputMappingContext(); //추가 사항
 
     UEnhancedInputComponent* EIC =
         CastChecked<UEnhancedInputComponent>(PlayerInputComponent);
@@ -198,6 +215,44 @@ void AFPPlayerCharacter::HandleItemInput()
     Server_UseItem();
 }
 
+void AFPPlayerCharacter::TryApplyInputMappingContext()
+{
+    if (bInputMappingApplied || !IsLocallyControlled() || !InputMappingContext)   //추가사항
+    {
+        return;
+    }
+
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    if (IsValid(PC) == false) return; // checkf 대신 안전한 if 체크
+
+    ULocalPlayer* LocalPlayer = PC->GetLocalPlayer(); //추가 사항
+    if (!IsValid(LocalPlayer)) //추가 사항
+    {
+        return;
+    }
+
+    // UEnhancedInputLocalPlayerSubsystem* EILPS =
+    //    ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>
+    //    (PC->GetLocalPlayer());
+    // if (IsValid(EILPS) == false) return; // 여기도 동일하게
+    // 아래함수로 변경
+
+    UEnhancedInputLocalPlayerSubsystem* EILPS =
+        ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(LocalPlayer);
+    if (!IsValid(EILPS))
+    {
+        return;
+    }
+
+    // EILPS->AddMappingContext(InputMappingContext, 0);// 에디터에서 설정한 입력 매핑(WASD 등)을 실제로 활성화
+    // OnRep_CharacterIndex(); 
+    // 아래함수로 변경
+
+    EILPS->RemoveMappingContext(InputMappingContext);
+    EILPS->AddMappingContext(InputMappingContext, 0);
+    bInputMappingApplied = true;
+}
+
 void AFPPlayerCharacter::Server_UseItem_Implementation()
 {
     switch (CurrentItem)
@@ -229,12 +284,18 @@ void AFPPlayerCharacter::UseFan()
     {
         for (auto& Result : OverlapResults)
         {
-            if (ACharacter* OtherChar = Cast<ACharacter>(Result.GetActor()))
-            {
-                FVector LaunchDir = OtherChar->GetActorLocation() - GetActorLocation();
-                LaunchDir.Normalize();
-                OtherChar->LaunchCharacter(LaunchDir * 1500.f + FVector(0, 0, 500.f), true, true);
-            }
+            AFPPlayerCharacter* OtherChar = Cast<AFPPlayerCharacter>(Result.GetActor());
+            if (!IsValid(OtherChar)) continue;
+
+            // ✅ 팀 체크 — 상대팀에게만 적용
+            AFPPlayerState* MyPS = GetPlayerState<AFPPlayerState>();
+            AFPPlayerState* OtherPS = OtherChar->GetPlayerState<AFPPlayerState>();
+            if (!IsValid(MyPS) || !IsValid(OtherPS)) continue;
+            if (MyPS->TeamID == OtherPS->TeamID) continue; // 같은 팀이면 스킵
+
+            FVector LaunchDir = OtherChar->GetActorLocation() - GetActorLocation();
+            LaunchDir.Normalize();
+            OtherChar->LaunchCharacter(LaunchDir * 1500.f + FVector(0, 0, 500.f), true, true);
         }
     }
     Multicast_PlayItemEffect(EItemType::Fan);
@@ -242,22 +303,39 @@ void AFPPlayerCharacter::UseFan()
 
 void AFPPlayerCharacter::UseMagnet()
 {
-    // 자석: 앞 방향 일정 거리 적 캐릭터 위치를 내 위치 앞으로 이동
-    FVector Forward = GetActorForwardVector();
-    FVector Start = GetActorLocation();
-    FVector End = Start + (Forward * 1000.f);
+    if (!HasAuthority()) return; // 서버에서만 물리 실행
+    UE_LOG(LogTemp, Warning, TEXT("UseMagnet 함수가 시작되었습니다! (서버 여부: %d)"), HasAuthority());
+    FVector Start = GetActorLocation() + FVector(0.f, 0.f, 50.f);
+    FVector End = Start + (GetActorForwardVector() * 1000.f);
 
     FHitResult Hit;
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
 
-    if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Pawn, Params))
+    // [보완] LineTrace 대신 SweepSingle(구체 판정)을 써서 더 잘 맞게 변경
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(100.f);
+
+    if (GetWorld()->SweepSingleByChannel(Hit, Start, End, FQuat::Identity, ECC_Pawn, Sphere, Params))
     {
-        if (ACharacter* OtherChar = Cast<ACharacter>(Hit.GetActor()))
+        UE_LOG(LogTemp, Warning, TEXT("충돌 성공! 맞은 액터: %s"), *Hit.GetActor()->GetName());
+        if (AFPPlayerCharacter* OtherChar = Cast<AFPPlayerCharacter>(Hit.GetActor()))
         {
-            FVector PullDir = GetActorLocation() - OtherChar->GetActorLocation();
-            PullDir.Normalize();
-            OtherChar->LaunchCharacter(PullDir * 2000.f, true, true);
+            AFPPlayerState* MyPS = GetPlayerState<AFPPlayerState>();
+            AFPPlayerState* OtherPS = OtherChar->GetPlayerState<AFPPlayerState>();
+
+            if (IsValid(MyPS) && IsValid(OtherPS) && MyPS->TeamID != OtherPS->TeamID)
+            {
+                UE_LOG(LogTemp, Log, TEXT("내 팀 ID: %d, 상대 팀 ID: %d"), (int32)MyPS->TeamID, (int32)OtherPS->TeamID);
+                FVector PullDir = GetActorLocation() - OtherChar->GetActorLocation();
+                PullDir.Z += 0.2f;
+                PullDir.Normalize();
+                OtherChar->LaunchCharacter(PullDir * 3000.f, true, true);
+
+                OtherChar->Multicast_PlayItemEffect(EItemType::Magnet);
+
+                // [추가] 사용 후 아이템 소모
+                CurrentItem = EItemType::None;
+            }
         }
     }
     Multicast_PlayItemEffect(EItemType::Magnet);
@@ -265,19 +343,56 @@ void AFPPlayerCharacter::UseMagnet()
 
 void AFPPlayerCharacter::UseWaterBalloon()
 {
-    // 물풍선: 타겟 캐릭터 MovementMode를 2초간 Disabled 처리 (또는 속도 0)
-    FHitResult Hit;
-    if (GetWorld()->LineTraceSingleByChannel(Hit, GetActorLocation(), GetActorLocation() + GetActorForwardVector() * 500.f, ECC_Pawn))
-    {
-        if (ACharacter* OtherChar = Cast<ACharacter>(Hit.GetActor()))
-        {
-            OtherChar->GetCharacterMovement()->MaxWalkSpeed = 0.f;
 
-            FTimerHandle UnusedHandle;
-            GetWorldTimerManager().SetTimer(UnusedHandle, [OtherChar]()
-                {
-                    if (OtherChar) OtherChar->GetCharacterMovement()->MaxWalkSpeed = 600.f;
-                }, 2.0f, false);
+    if (!HasAuthority()) return;
+
+    // 1. 함수 호출 확인 (서버/클라이언트 구분)
+    UE_LOG(LogTemp, Warning, TEXT("UseMagnet 함수가 시작되었습니다! (서버 여부: %d)"), HasAuthority());
+
+    FVector Start = GetActorLocation() + FVector(0.f, 0.f, 50.f);
+    FVector End = Start + (GetActorForwardVector() * 500.f);
+    FHitResult Hit;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(100.f);
+
+    if (GetWorld()->SweepSingleByChannel(Hit, Start, End, FQuat::Identity, ECC_Pawn, Sphere, Params))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("충돌 성공! 맞은 액터: %s"), *Hit.GetActor()->GetName());
+        if (AFPPlayerCharacter* OtherChar = Cast<AFPPlayerCharacter>(Hit.GetActor()))
+        {
+            AFPPlayerState* MyPS = GetPlayerState<AFPPlayerState>();
+            AFPPlayerState* OtherPS = OtherChar->GetPlayerState<AFPPlayerState>();
+
+            // 3. 팀 ID 확인 (이게 다르면 적군 판정이 안 됨)
+            UE_LOG(LogTemp, Log, TEXT("내 팀 ID: %d, 상대 팀 ID: %d"), (int32)MyPS->TeamID, (int32)OtherPS->TeamID);
+            if (IsValid(MyPS) && IsValid(OtherPS) && MyPS->TeamID != OtherPS->TeamID)
+            {
+                // 1. 상대방의 움직임을 즉시 멈춤
+                OtherChar->GetCharacterMovement()->StopMovementImmediately();
+
+                // 2. 일시적으로 속도를 0으로 만듦 (가두기 효과)
+                OtherChar->GetCharacterMovement()->MaxWalkSpeed = 0.f;
+
+                // 3. 멀티캐스트로 물풍선 이펙트(터지는 효과, 물방울 갇힌 효과) 재생
+                OtherChar->Multicast_PlayItemEffect(EItemType::WaterBalloon);
+
+                // 4. 일정 시간(예: 3초) 뒤에 다시 속도 복구
+                FTimerHandle TimerHandle;
+                GetWorld()->GetTimerManager().SetTimer(TimerHandle, [OtherChar]()
+                    {
+                        if (IsValid(OtherChar))
+                        {
+                            OtherChar->GetCharacterMovement()->MaxWalkSpeed = 600.f; // 원래 속도로 복구
+                        }
+                    }, 10.0f, false);
+
+                OtherChar->Multicast_PlayItemEffect(EItemType::WaterBalloon);
+
+                // [추가] 사용 후 아이템 소모
+                CurrentItem = EItemType::None;
+            }
         }
     }
     Multicast_PlayItemEffect(EItemType::WaterBalloon);

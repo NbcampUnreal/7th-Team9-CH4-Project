@@ -35,10 +35,12 @@ class FARMSPOPCORN_API AFPPlayerCharacter : public ACharacter
 public:
     AFPPlayerCharacter();
 
-    virtual void SetupPlayerInputComponent(
-        UInputComponent* PlayerInputComponent) override;
+    virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
     virtual void BeginPlay() override;
+
+    virtual void PossessedBy(AController* NewController) override; //추가사항
+    virtual void OnRep_Controller() override; //추가사항
 
     // 착지 시 점프 카운트 초기화
     virtual void Landed(const FHitResult& Hit) override;
@@ -75,6 +77,8 @@ private:
     void HandleLookInput(const FInputActionValue& InValue);
     void HandleJumpInput();       // 이중점프 처리
     void HandleItemInput();       // Z키 아이템 사용
+    void TryApplyInputMappingContext(); //추가사항
+    bool bInputMappingApplied = false; //추가사항
 
 protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,

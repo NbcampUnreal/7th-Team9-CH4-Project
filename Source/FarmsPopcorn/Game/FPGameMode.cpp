@@ -486,7 +486,7 @@ void AFPGameMode::AddScoreToTeam(EFPTeamID InTeamID, int32 ScoreAmount)
 	}
 
 	// 2. GameInstance를 딱 한 번만 가져와서 안전하게 저장합니다.
-	UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
+	
 
 	// 3. GI가 유효할 때만 점수를 누적 기록합니다. (안전장치)
 	if (GI)
