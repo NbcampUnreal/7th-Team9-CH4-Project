@@ -20,7 +20,7 @@ protected:
 	FBlackboardKeySelector PlayerKey;
 	
 	UPROPERTY(EditAnywhere, Category = "Charge Setting")
-	float MaxChargeDistance = 10000.f;
+	float MaxChargeDistance = 7000.f;
 	
 	FVector ChargedDirection;
 	float ChargedDistance = 0.f;
