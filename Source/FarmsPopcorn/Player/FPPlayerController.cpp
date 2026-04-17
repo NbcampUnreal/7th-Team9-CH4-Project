@@ -5,13 +5,15 @@
 #include "Game/FPGameMode.h"
 #include "Engine/World.h"
 #include "Game/FPGameInstance.h"
+#include "GameFramework/GameStateBase.h"
+#include "Game/FPGameState.h"
 #include "GameFramework/PlayerController.h"
 
 
 void AFPPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	if (IsLocalController())
 	{
 		UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
@@ -19,6 +21,18 @@ void AFPPlayerController::BeginPlay()
 		{
 			UE_LOG(LogTemp, Warning, TEXT("서버에 캐릭터 복구 요청 중: %s"), *GI->SaveCharacterID.ToString());
 			Server_RestoreCharacter(GI->SaveCharacterID, GI->SaveCharacterClass);
+		}
+		if (GetWorld() && GetWorld()->GetGameState<AFPGameState>())
+		{
+			if (InGameScoreWidgetClass)
+			{
+				UUserWidget* ScoreUI = CreateWidget<UUserWidget>(this, InGameScoreWidgetClass);
+				if (ScoreUI)
+				{
+					ScoreUI->AddToViewport();
+					UE_LOG(LogTemp, Warning, TEXT("인게임 점수판 UI가 화면에 추가되었습니다"));
+				}
+			}
 		}
 	}
 }
@@ -31,7 +45,7 @@ void AFPPlayerController::ServerSetCustomName_Implementation(const FString& NewN
 	{
 		PS->CustomPlayerName = NewName;
 		UE_LOG(LogTemp, Warning, TEXT("플레이어 %s의 "), 
-		*PS->GetPlayerName());
+		*PS->GetPlayerName(), *NewName);
 	}
 	
 }
@@ -113,24 +127,29 @@ void AFPPlayerController::Client_SaveCharacterToInstance_Implementation(FName Ch
 
 void AFPPlayerController::ServerSendChatMessage_Implementation(const FString& SenderName, const FString& Message)
 {
+	//보낸 사람의 ID 가져오기
+	AFPPlayerState* PS = GetPlayerState<AFPPlayerState>();
+	EFPTeamID SenderTeam = PS ? PS->TeamID : EFPTeamID::None;
 	//빈 문자열 무시
 	if (SenderName.IsEmpty() || Message.IsEmpty()) return;
 
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		AFPPlayerController* OtherPC = Cast<AFPPlayerController>(It->Get());
-		if (OtherPC)
+		if (AFPPlayerController* TargetPC = Cast<AFPPlayerController>(It->Get()))
 		{
-			// 서버가 각 클라이언트의 'ClientReceiveChatMessage'를 실행시킴
-			OtherPC->ClientReceiveChatMessage(SenderName, Message);
+			TargetPC->ClientReceiveChatMessage(SenderName, Message, SenderTeam);
 		}
 	}
 }
-void AFPPlayerController::ClientReceiveChatMessage_Implementation(const FString& SenderName, const FString& Message)
+void AFPPlayerController::ClientReceiveChatMessage_Implementation(const FString& SenderName, const FString& Message, EFPTeamID TeamID)
 {
 	if (OnChatMessageReceived.IsBound())
 	{
-		OnChatMessageReceived.Broadcast(SenderName, Message);
+		OnChatMessageReceived.Broadcast(SenderName, Message, TeamID);
+	}
+	else
+	{
+		PendingMessages.Add(FPendingChatMessage(SenderName, Message, TeamID));
 	}
 }
 void AFPPlayerController::ClientShowFinalResult_Implementation()
@@ -150,5 +169,19 @@ void AFPPlayerController::DebugEndRound()
 
 			UE_LOG(LogTemp, Warning, TEXT("디버그: 라운드 강제 종료 실행!"));
 		}
+	}
+}
+
+void AFPPlayerController::RequestChangeTeam()
+{
+	ServerRequestChangeTeam();
+}
+bool AFPPlayerController::ServerRequestChangeTeam_Validate() { return true; }
+
+void AFPPlayerController::ServerRequestChangeTeam_Implementation()
+{
+	if (AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		GM->ChangeTeam(this);
 	}
 }

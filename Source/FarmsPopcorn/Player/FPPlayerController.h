@@ -2,7 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Core/FPTeamID.h"
 #include "FPPlayerController.generated.h"
+
+class AFPGameState;
 
 //채팅 저장
 USTRUCT(BlueprintType)
@@ -16,14 +19,17 @@ struct FPendingChatMessage
 	UPROPERTY()
 	FString Message;
 
+	UPROPERTY()
+	EFPTeamID TeamID;
+
 	FPendingChatMessage()
 	{
 	}
-	FPendingChatMessage(const FString& InSenderName, const FString& InMessage) : SenderName(InSenderName), Message(InMessage)
+	FPendingChatMessage(const FString& InSenderName, const FString& InMessage, EFPTeamID InTeamID) : SenderName(InSenderName), Message(InMessage), TeamID(InTeamID)
 	{
 	}
 };
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnChatMessageReceived, const FString&, const FString&);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnChatMessageReceived, const FString&, const FString&, EFPTeamID);
 
 UCLASS()
 class FARMSPOPCORN_API AFPPlayerController : public APlayerController
@@ -33,6 +39,10 @@ class FARMSPOPCORN_API AFPPlayerController : public APlayerController
 protected:
 	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Name")
 	FString InName;
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UUserWidget> InGameScoreWidgetClass;
+	UPROPERTY()
+	class UUserWidget* InGameScoreWidget;
 public:
 	UFUNCTION(Server, Reliable)
 	void ServerSetCustomName(const FString& NewName);
@@ -45,7 +55,7 @@ public:
 	void ServerSendChatMessage(const FString& SenderName, const FString& Message);
 
 	UFUNCTION(Client, Reliable)
-	void ClientReceiveChatMessage(const FString& SenderName, const FString& Message);
+	void ClientReceiveChatMessage(const FString& SenderName, const FString& Message,EFPTeamID TeamID);
 
 	// 서버 → 클라이언트: 결과창 표시
 	UFUNCTION(Client, Reliable)
@@ -67,6 +77,12 @@ public:
 	// 블루프린트에서 위젯 클래스 지정
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> RoundResultWidgetClass;
+	//UI버튼에서 호출할 버튼
+	UFUNCTION(BlueprintCallable, Category = "FP|Team")
+	void RequestChangeTeam();
+	//서버에서 실행될 함수
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerRequestChangeTeam();
 
 	
 	UFUNCTION(Client, Reliable)

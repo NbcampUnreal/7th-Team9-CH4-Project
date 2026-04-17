@@ -1,7 +1,7 @@
 ﻿#include "UI/FPLobbyWidget.h"
 #include "Player/FPPlayerController.h"
-#include "FPPlayerSlotWidget.h"
-#include "FPPlayerListEntryWidget.h"
+#include "UI/FPPlayerSlotWidget.h"
+#include "UI/FPPlayerListEntryWidget.h"
 #include "Player/FPPlayerState.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
@@ -101,17 +101,13 @@ void UFPLobbyWidget::OnPlayerJoined(const FString& PlayerName, int32 CharacterIn
 		}
 	}
 	//VerticalBox에 플레이어 목록 추가
-	if (PlayerListEntryWidgetClass && PlayerListBox)
+	if (PlayerListEntryWidgetClass)
 	{
 		UFPPlayerListEntryWidget* NewEntry = CreateWidget<UFPPlayerListEntryWidget>(this, PlayerListEntryWidgetClass);
 		if (NewEntry)
 		{
 			//닉네임 + 초기 준비상태설정
 			NewEntry->SetPlayerInfo(PlayerName, false);
-			//VerticalBox에 추가 후 간격 설정
-			UVerticalBoxSlot* VSlot = PlayerListBox->AddChildToVerticalBox(NewEntry);
-			if (VSlot)
-				VSlot->SetPadding(FMargin(0.0f, 5.0f));
 			//닉네임 기준으로 목록 맵 저장
 			ListEntryMap.Add(PlayerName, NewEntry);
 		}
@@ -187,10 +183,13 @@ void UFPLobbyWidget::UpdateReadyStatus(bool bNewReadyState)
 void UFPLobbyWidget::CheckPlayerArray()
 {
 	AGameStateBase* GS = GetWorld()->GetGameState();
-	if (!GS) return;
+	if (!GS || !RedTeamListBox || !BlueTeamListBox) return;
 	//디버그 로그
 	UE_LOG(LogTemp, Warning, TEXT("PlayerArray 크기: %d"), GS->PlayerArray.Num());
 	UE_LOG(LogTemp, Warning, TEXT("HasAuthority: %s"), *FString(GetWorld()->GetNetMode() == NM_ListenServer ? TEXT("ListenServer") : TEXT("Client")));
+	RedTeamListBox->ClearChildren();
+	BlueTeamListBox->ClearChildren();
+	ListEntryMap.Empty();
 	//현재 접속중인 플레이어 이름
 	TArray<FString> CurrentPlayerNames;
 	for (APlayerState* PS : GS->PlayerArray)
@@ -204,26 +203,23 @@ void UFPLobbyWidget::CheckPlayerArray()
 			: PS->GetPlayerName();
 		UE_LOG(LogTemp, Warning, TEXT("플레이어 이름: %s"), *Name);
 		CurrentPlayerNames.Add(Name);
-		//이미 목록에 있는 플레이어 준비상태
-		if (FPS && ListEntryMap.Contains(Name))
+		//새로 들어온 플레이어 요청
+		if (PlayerListEntryWidgetClass)
 		{
-			OnPlayerReadyChanged(Name, FPS->bIsReady);
-		}
-	}
-	//새로 들어온 플레이어 감지
-	for (const FString& Name : CurrentPlayerNames)
-	{
-		if (!CaChedPlayerNames.Contains(Name))
-		{
-			OnPlayerJoined(Name, 0);
-		}
-	}
-	//나간 플레이어 감지
-	for (const FString& Name : CaChedPlayerNames)
-	{
-		if (!CurrentPlayerNames.Contains(Name))
-		{
-			OnPlayerLeft(Name);
+			UFPPlayerListEntryWidget* NewEntry = CreateWidget<UFPPlayerListEntryWidget>(this, PlayerListEntryWidgetClass);
+			if (NewEntry)
+			{
+				NewEntry->SetPlayerInfo(Name, FPS ? FPS->bIsReady : false);
+				ListEntryMap.Add(Name, NewEntry);
+
+				//팀에 맞는 박스 추가
+				UVerticalBox* TargetBox = (FPS && FPS->TeamID == EFPTeamID::TeamRed) ? RedTeamListBox : BlueTeamListBox;
+				UVerticalBoxSlot* VSlot = TargetBox->AddChildToVerticalBox(NewEntry);
+				if (VSlot)
+				{
+					VSlot->SetPadding(FMargin(0.0f, 5.0f));
+				}
+			}
 		}
 	}
 	//캐시 업데이트

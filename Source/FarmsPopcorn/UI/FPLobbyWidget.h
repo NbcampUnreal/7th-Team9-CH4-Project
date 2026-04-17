@@ -42,7 +42,9 @@ protected:
 	class UHorizontalBox* PlayerSpawnBox;
 	//플레이어 목록
 	UPROPERTY(meta = (BindWidget))
-	class UVerticalBox* PlayerListBox;
+	class UVerticalBox* BlueTeamListBox;
+	UPROPERTY(meta = (BindWidget))
+	class UVerticalBox* RedTeamListBox;
 	//슬롯 위젯
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<class UFPPlayerSlotWidget> PlayerSlotWidgetClass;
