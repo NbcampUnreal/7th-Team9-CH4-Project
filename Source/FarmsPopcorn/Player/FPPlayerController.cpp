@@ -37,6 +37,24 @@ void AFPPlayerController::BeginPlay()
 	}
 }
 
+void AFPPlayerController::BeginPlayingState()
+{
+	Super::BeginPlayingState();
+	ApplyGameplayInputMode();
+}
+
+void AFPPlayerController::ApplyGameplayInputMode()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	FInputModeGameOnly InputMode;
+	SetInputMode(InputMode);
+	bShowMouseCursor = false;
+}
+
 void AFPPlayerController::ServerSetCustomName_Implementation(const FString& NewName)
 {
 	// UI에서 받은 이름을 플레이어 스테이트에게 전달
@@ -99,7 +117,21 @@ void AFPPlayerController::ClientShowRoundResult_Implementation()
 
 void AFPPlayerController::Server_RestoreCharacter_Implementation(FName SavedID, TSubclassOf<APawn> SavedClass)
 {
-	if (AFPPlayerState* PS = GetPlayerState<AFPPlayerState>())
+	if (!HasAuthority()) return;
+    
+	AFPPlayerState* PS = GetPlayerState<AFPPlayerState>();
+	if (!PS)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Server_RestoreCharacter: PlayerState NULL"));
+		return;
+	}
+	if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
+	{
+		GI->SaveCharacterID = SavedID;
+		GI->SaveCharacterClass = SavedClass;
+		UE_LOG(LogTemp, Warning, TEXT("GameInstance 동기화: %s"), *SavedID.ToString());
+	}
+	if (PS)
 	{
 		PS->AssignedCharacterID = SavedID;
 		PS->AssignedCharacterClass = SavedClass;

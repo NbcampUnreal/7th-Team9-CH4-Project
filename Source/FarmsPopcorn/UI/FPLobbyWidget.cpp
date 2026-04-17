@@ -71,6 +71,14 @@ void UFPLobbyWidget::NativeDestruct()
 	Super::NativeDestruct();
 	//타이머정리(메모리 누수 방지)
 	GetWorld()->GetTimerManager().ClearTimer(PlayerCheckTimerHandle);
+
+	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	if (PC)
+	{
+		FInputModeGameOnly InputMode;
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = false;
+	}
 }
 
 void UFPLobbyWidget::OnPlayerJoined(const FString& PlayerName, int32 CharacterIndex)
