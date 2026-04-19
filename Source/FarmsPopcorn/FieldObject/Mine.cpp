@@ -29,6 +29,9 @@ AMine::AMine()
     ExplosionRadius = 300.0f;
     // 넉백 세기
     KnockbackForce = FVector(1200.0f, 1200.0f, 2000.0f);
+
+    // 네트워크 동기화 선언
+    bReplicates = true;
 }
 
 void AMine::BeginPlay()
