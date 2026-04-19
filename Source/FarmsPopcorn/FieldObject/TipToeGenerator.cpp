@@ -1,6 +1,7 @@
 ﻿// TipToeGenerator.cpp
 
 #include "TipToeGenerator.h"
+#include "FakeTile.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Math/UnrealMathUtility.h"
 
@@ -18,7 +19,9 @@ ATipToeGenerator::ATipToeGenerator()
     Rows = 15;
     Columns = 10;
     BlockSize = 200.f;
+    Padding = 100.f;
     FakeChance = 0.7f;
+    bAutoSizeToMesh = true;
 }
 
 int32 ATipToeGenerator::GetIndex(int32 X, int32 Y) const
@@ -30,12 +33,20 @@ void ATipToeGenerator::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
 
-    // 매 판 맵 재생성
+    // 맵 재생성
     GenerateMaze();
 }
 
 void ATipToeGenerator::GenerateMaze()
 {
+    float CurrentMeshSize = MeshSize;
+    if (bAutoSizeToMesh && RealMeshComp && RealMeshComp->GetStaticMesh())
+    {
+        FBoxSphereBounds Bounds = RealMeshComp->GetStaticMesh()->GetBounds();
+        CurrentMeshSize = Bounds.BoxExtent.X * 2.0f;
+    }
+    FinalInterval = CurrentMeshSize + Padding;
+
     // 기존에 생성된 블럭 초기화
     if (RealMeshComp) RealMeshComp->ClearInstances();
     if (FakeMeshComp) FakeMeshComp->ClearInstances();
@@ -83,16 +94,14 @@ void ATipToeGenerator::GenerateMaze()
             int32 Index = GetIndex(X, Y);
             bool bIsReal = GridData[Index];
 
-            
             if (!bIsReal)
             {
                 bIsReal = (FMath::FRand() > FakeChance);
             }
 
-            // 블럭 사이즈에 따라 블럭 위치 계산
-            FVector InstanceLocation = FVector(X * BlockSize, Y * BlockSize, 0.f);
+            FVector Location = FVector(X * FinalInterval, Y * FinalInterval, 0.f);
             FTransform InstanceTransform;
-            InstanceTransform.SetLocation(InstanceLocation);
+            InstanceTransform.SetLocation(Location);
 
             if (bIsReal)
             {
@@ -103,5 +112,35 @@ void ATipToeGenerator::GenerateMaze()
                 FakeMeshComp->AddInstance(InstanceTransform);
             }
         }
+    }
+}
+
+void ATipToeGenerator::BeginPlay()
+{
+    Super::BeginPlay();
+
+    // 매 실행시 발판 위치 재생성
+    GenerateMaze();
+
+    // FakeTileClass를 잘 넣었는지 확인
+    if (FakeTileClass && FakeMeshComp)
+    {
+        int32 InstanceCount = FakeMeshComp->GetInstanceCount();
+
+        // 강제 소환
+        FActorSpawnParameters SpawnParams;
+        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+        // FakeTile개수만큼 액터 소환
+        for (int32 i = 0; i < InstanceCount; i++)
+        {
+            FTransform Transform;
+            FakeMeshComp->GetInstanceTransform(i, Transform, true);
+
+            GetWorld()->SpawnActor<AFakeTile>(FakeTileClass, Transform, SpawnParams);
+        }
+
+        // 인스턴스 삭제
+        FakeMeshComp->ClearInstances();
     }
 }
