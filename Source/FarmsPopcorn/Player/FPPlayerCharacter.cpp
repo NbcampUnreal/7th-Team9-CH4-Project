@@ -28,16 +28,29 @@ AFPPlayerCharacter::AFPPlayerCharacter()
     GetCharacterMovement()->bOrientRotationToMovement = true;
     // 대신 이동 방향으로 캐릭터가 자연스럽게 돌아봄
     // (WASD 누르면 그 방향 바라봄 - 일반적인 3인칭 방식)
-    GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
+    GetCharacterMovement()->RotationRate = FRotator(0.f, 180.f, 0.f);
     GetCharacterMovement()->MaxWalkSpeed = 600.f; // 걷기 최대 속도
     GetCharacterMovement()->JumpZVelocity = 600.f;// 점프 위로 튀어오르는 힘
     GetCharacterMovement()->AirControl = 0.3f;// 공중에서 방향 조작 가능한 정도 (0=불가, 1=완전자유)
 
     // 스프링암 (PDF: TargetArmLength = 400)
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-    SpringArm->TargetArmLength = 1600.f;// 카메라를 캐릭터로부터 400cm 뒤로
+    SpringArm->TargetArmLength = 800.f;// 카메라를 캐릭터로부터 400cm 뒤로
     SpringArm->bUsePawnControlRotation = true;// 마우스로 카메라 회전 가능
     SpringArm->SetupAttachment(GetRootComponent());
+
+    // 3. 회전 상속 설정 (핵심!)
+    SpringArm->bInheritPitch = false; // 마우스 위아래 이동에 카메라가 기울어지지 않게 고정
+    SpringArm->bInheritYaw = true;   // 마우스 좌우 이동에 카메라가 회전하도록 허용
+    SpringArm->bInheritRoll = false;
+
+    // [추가] 카메라가 바닥이나 벽에 닿았을 때 갑자기 튀는 것을 방지
+    SpringArm->ProbeSize = 15.f;                 // 충돌 감지 크기 조절
+    SpringArm->bDoCollisionTest = false;          // 벽 뚫기 방지
+    SpringArm->SetRelativeRotation(FRotator(-30.f, 0.f, 0.f));
+    SpringArm->SetRelativeLocation(FVector(0.f, 0.f, 30.f));
+
+   
 
     // 카메라
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
@@ -104,6 +117,7 @@ void AFPPlayerCharacter::BeginPlay()
 
    // TryApplyInputMappingContext();   //추가사항
    // OnRep_CharacterIndex();  //추가사항
+
 }
 
 void AFPPlayerCharacter::PossessedBy(AController* NewController)
@@ -260,6 +274,7 @@ void AFPPlayerCharacter::Server_UseItem_Implementation()
     case EItemType::Fan:          UseFan();          break;
     case EItemType::Magnet:       UseMagnet();       break;
     case EItemType::WaterBalloon: UseWaterBalloon(); break;
+    case EItemType::WaterBalloonFreeze: UseWaterBalloonFreeze(); break;
     case EItemType::SweetPotato:  UseSweetPotato();  break;
     default: break;
     }
@@ -268,6 +283,7 @@ void AFPPlayerCharacter::Server_UseItem_Implementation()
     CurrentItem = EItemType::None;
     OnRep_CurrentItem();  // UI 갱신
 }
+
 
 
 
@@ -347,7 +363,7 @@ void AFPPlayerCharacter::UseWaterBalloon()
     if (!HasAuthority()) return;
 
     // 1. 함수 호출 확인 (서버/클라이언트 구분)
-    UE_LOG(LogTemp, Warning, TEXT("UseMagnet 함수가 시작되었습니다! (서버 여부: %d)"), HasAuthority());
+    UE_LOG(LogTemp, Warning, TEXT("UseWaterBalloon 함수가 시작되었습니다! (서버 여부: %d)"), HasAuthority());
 
     FVector Start = GetActorLocation() + FVector(0.f, 0.f, 50.f);
     FVector End = Start + (GetActorForwardVector() * 500.f);
@@ -357,45 +373,76 @@ void AFPPlayerCharacter::UseWaterBalloon()
 
     FCollisionShape Sphere = FCollisionShape::MakeSphere(100.f);
 
-    if (GetWorld()->SweepSingleByChannel(Hit, Start, End, FQuat::Identity, ECC_Pawn, Sphere, Params))
-    {
-        UE_LOG(LogTemp, Warning, TEXT("충돌 성공! 맞은 액터: %s"), *Hit.GetActor()->GetName());
-        if (AFPPlayerCharacter* OtherChar = Cast<AFPPlayerCharacter>(Hit.GetActor()))
+    if (!GetWorld()->SweepSingleByChannel(
+        Hit, Start, End, FQuat::Identity, ECC_Pawn, Sphere, Params)) return;
+
+    AFPPlayerCharacter* OtherChar = Cast<AFPPlayerCharacter>(Hit.GetActor());
+    if (!IsValid(OtherChar)) return;
+
+    AFPPlayerState* MyPS = GetPlayerState<AFPPlayerState>();
+    AFPPlayerState* OtherPS = OtherChar->GetPlayerState<AFPPlayerState>();
+    if (!IsValid(MyPS) || !IsValid(OtherPS)) return;
+    if (MyPS->TeamID == OtherPS->TeamID) return;
+
+    // 이동 정지
+    OtherChar->GetCharacterMovement()->StopMovementImmediately();
+    OtherChar->GetCharacterMovement()->MaxWalkSpeed = 0.f;
+
+    // 나이아가라 ON — OtherChar 본인한테 직접 호출
+    OtherChar->Multicast_StartWaterBalloonFreeze();
+
+    // 10초 후 복구
+    GetWorld()->GetTimerManager().SetTimer(
+        OtherChar->WaterBalloonFreezeTimerHandle,
+        [OtherChar]()
         {
-            AFPPlayerState* MyPS = GetPlayerState<AFPPlayerState>();
-            AFPPlayerState* OtherPS = OtherChar->GetPlayerState<AFPPlayerState>();
+            if (!IsValid(OtherChar)) return;
+            OtherChar->GetCharacterMovement()->MaxWalkSpeed = 600.f;
+            OtherChar->Multicast_StopWaterBalloonFreeze();
+        },
+        10.0f, false);
 
-            // 3. 팀 ID 확인 (이게 다르면 적군 판정이 안 됨)
-            UE_LOG(LogTemp, Log, TEXT("내 팀 ID: %d, 상대 팀 ID: %d"), (int32)MyPS->TeamID, (int32)OtherPS->TeamID);
-            if (IsValid(MyPS) && IsValid(OtherPS) && MyPS->TeamID != OtherPS->TeamID)
-            {
-                // 1. 상대방의 움직임을 즉시 멈춤
-                OtherChar->GetCharacterMovement()->StopMovementImmediately();
+    CurrentItem = EItemType::None;
+}
 
-                // 2. 일시적으로 속도를 0으로 만듦 (가두기 효과)
-                OtherChar->GetCharacterMovement()->MaxWalkSpeed = 0.f;
+void AFPPlayerCharacter::Multicast_StartWaterBalloonFreeze_Implementation()
+{
+    // WaterBalloonEffect 변수에 에셋이 할당되어 있으면 그걸 우선 사용
+    // 없으면 ItemEffects Map에서 WaterBalloonFreeze 키로 찾음
+    UNiagaraSystem* Effect = nullptr;
 
-                // 3. 멀티캐스트로 물풍선 이펙트(터지는 효과, 물방울 갇힌 효과) 재생
-                OtherChar->Multicast_PlayItemEffect(EItemType::WaterBalloon);
-
-                // 4. 일정 시간(예: 3초) 뒤에 다시 속도 복구
-                FTimerHandle TimerHandle;
-                GetWorld()->GetTimerManager().SetTimer(TimerHandle, [OtherChar]()
-                    {
-                        if (IsValid(OtherChar))
-                        {
-                            OtherChar->GetCharacterMovement()->MaxWalkSpeed = 600.f; // 원래 속도로 복구
-                        }
-                    }, 10.0f, false);
-
-                OtherChar->Multicast_PlayItemEffect(EItemType::WaterBalloon);
-
-                // [추가] 사용 후 아이템 소모
-                CurrentItem = EItemType::None;
-            }
-        }
+    if (IsValid(WaterBalloonEffect))
+    {
+        Effect = WaterBalloonEffect;
     }
-    Multicast_PlayItemEffect(EItemType::WaterBalloon);
+    else if (ItemEffects.Contains(EItemType::WaterBalloonFreeze))
+    {
+        Effect = ItemEffects[EItemType::WaterBalloonFreeze];
+    }
+
+    if (!IsValid(Effect)) return;
+
+    // 캐릭터 루트에 붙여서 생성 → 캐릭터랑 같이 이동
+    UNiagaraFunctionLibrary::SpawnSystemAttached(
+        Effect,
+        GetRootComponent(),
+        NAME_None,
+        FVector::ZeroVector,
+        FRotator::ZeroRotator,
+        EAttachLocation::KeepRelativeOffset,
+        true  // 나이아가라 자체 수명으로 자동 소멸
+    );
+}
+
+void AFPPlayerCharacter::Multicast_StopWaterBalloonFreeze_Implementation()
+{
+    // 나이아가라 에셋 자체에서 10초 수명을 설정해놨으니
+    // 속도 복구만 알려주면 됨 — 이펙트는 알아서 꺼짐
+    // 필요하면 여기서 추가 처리 가능
+}
+
+void AFPPlayerCharacter::UseWaterBalloonFreeze()
+{
 }
 
 void AFPPlayerCharacter::UseSweetPotato()
@@ -429,25 +476,24 @@ void AFPPlayerCharacter::Jump()
 void AFPPlayerCharacter::Multicast_PlayItemEffect_Implementation(
     EItemType UsedItem)
 {
-    // TODO: 아이템별 이펙트/사운드/애니메이션 몽타주 재생
-    // 1. 바구니에 해당 아이템용 효과가 들어있는지 확인
     if (ItemEffects.Contains(UsedItem))
     {
         UNiagaraSystem* SelectedEffect = ItemEffects[UsedItem];
         if (SelectedEffect)
         {
-            // 2. 내 위치(GetActorLocation)에 효과를 생성!
-            // SpawnSystemAtLocation: 특정 위치에 고정 / SpawnSystemAttached: 캐릭터를 따라다님
-            UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-                GetWorld(),
+            // SpawnSystemAttached를 사용하면 캐릭터 몸(Mesh)에 이펙트가 붙어서 따라다닙니다.
+            UNiagaraFunctionLibrary::SpawnSystemAttached(
                 SelectedEffect,
-                GetActorLocation(),
-                GetActorRotation()
+                GetMesh(),                // 부착할 컴포넌트
+                TEXT("StackSocket"),           // 부착할 뼈(Bone) 이름 (없으면 NAME_None)
+                FVector::ZeroVector,      // 상대 위치
+                FRotator::ZeroRotator,    // 상대 회전
+                EAttachLocation::SnapToTarget,
+                true                      // 자동 파괴 활성화
             );
         }
+    
     }
-
-    // 3. (선택사항) 사운드나 애니메이션 몽타주도 여기서 재생하면 좋습니다.
 }
 
 // ---------------------------------------------------------

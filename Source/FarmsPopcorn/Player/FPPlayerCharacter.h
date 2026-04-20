@@ -22,6 +22,7 @@ enum class EItemType : uint8
     Fan         UMETA(DisplayName = "선풍기"),
     Magnet      UMETA(DisplayName = "자석"),
     WaterBalloon UMETA(DisplayName = "물풍선"),
+    WaterBalloonFreeze UMETA(DisplayName = "물풍선 가두기"),
     SweetPotato UMETA(DisplayName = "고구마"),   // 이중점프
 };
 
@@ -159,10 +160,18 @@ private:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_PlayItemEffect(EItemType UsedItem);
 
+    // 물풍선 감금 전용 멀티캐스트 (OtherChar에서 직접 호출)
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_StartWaterBalloonFreeze();
+
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_StopWaterBalloonFreeze();
+
     // 아이템별 효과 함수들
     void UseFan();          // 선풍기: 주변 적 날려버림
     void UseMagnet();       // 자석: 앞 적 끌어당김
     void UseWaterBalloon(); // 물풍선: 2초간 이동 불가
+    void UseWaterBalloonFreeze();
     void UseSweetPotato();  // 고구마: 이중점프 활성화
 
 protected:
@@ -180,9 +189,15 @@ protected:
     //고구마 효과 지속시간을 관리할 타이머 핸들 선언
     FTimerHandle SweetPotatoTimerHandle;
 
+    // 물풍선 정지 해제 타이머
+    FTimerHandle WaterBalloonFreezeTimerHandle;
+
     // 아이템 종류별로 나이아가라 에셋을 매칭해서 담아둘 바구니(Map)
     UPROPERTY(EditAnywhere, Category = "Item|Effect")
     TMap<EItemType, TObjectPtr<UNiagaraSystem>> ItemEffects;
+
+    UPROPERTY(EditAnywhere, Category = "Item|Effect")
+    class UNiagaraSystem* WaterBalloonEffect; // 에디터에서 할당할 물풍선 에셋
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effect")
     TObjectPtr<UNiagaraComponent> JumpSmokeComponent;
