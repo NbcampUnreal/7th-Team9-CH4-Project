@@ -88,3 +88,10 @@ void AFlipper::LaunchTarget(AActor* OtherActor)
         }
     }
 }
+
+void AFlipper::BeginPlay()
+{
+    Super::BeginPlay();
+
+    ElapsedTime = StartOffset;
+}
