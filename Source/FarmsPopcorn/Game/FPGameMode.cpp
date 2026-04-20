@@ -2,6 +2,8 @@
 #include "FPGameState.h"
 #include "FPGameInstance.h"
 #include "Player/FPPlayerState.h"
+#include "Player/FPPlayerController.h"
+#include "UI/FPLoadingWidget.h"
 
 
 AFPGameMode::AFPGameMode()
@@ -44,6 +46,43 @@ void AFPGameMode::BeginPlay()
 void AFPGameMode::HandleSeamlessTravelPlayer(AController*& C)
 {
 	Super::HandleSeamlessTravelPlayer(C);
+	
+	if (!C)
+	{
+		return;
+	}
+	
+	APlayerController* PC = Cast<APlayerController>(C);
+	if (!PC)
+	{
+		return;
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("✓ HandleSeamlessTravelPlayer: %s (LocalPlayer: %s)"), 
+		*PC->GetName(),
+		PC->IsLocalPlayerController() ? TEXT("TRUE") : TEXT("FALSE"));
+	
+	// SeamlessTravel로 이동한 플레이어에 대해 초기화
+	if (AvatarClasses.IsEmpty() && CharacterDataTable)
+	{
+		CheckPlayerAvater();
+	}
+	AssignCharacterToPlayer(PC);
+	AssignTeam(PC);
+
+	if (LoadingWidgetClass)
+	{
+		if (AFPPlayerController* FPPC = Cast<AFPPlayerController>(PC))
+		{
+			FPPC->ClientShowPostTravelLoading(
+				LoadingWidgetClass,
+				2.0f,
+				TEXT("맵 로딩 중...")
+			);
+		}
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("✓ Player initialized after seamless travel"));
 }
 
 //아바타 데이터테이블 정보확인
@@ -572,8 +611,80 @@ void AFPGameMode::StartNextRound()
 			PC->ClientHideRoundResult();
 		}
 	}
-
+	ShowRoundTransitionLoading();
 	GS->SetGamePhase(EFPGamePhase::InGame);
+	
 
 	UE_LOG(LogTemp, Warning, TEXT("=== Round %d 시작 ==="), CurrentRound);
 }
+// FPGameMode.cpp의 StartNextRound() 와 추가 함수 (기존 코드 교체)
+
+void AFPGameMode::ShowRoundTransitionLoading()
+{
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		if (PC && PC->IsLocalPlayerController() && LoadingWidgetClass)
+		{
+			CurrentLoadingWidget = CreateWidget<UFPLoadingWidget>(PC, LoadingWidgetClass);
+			if (CurrentLoadingWidget)
+			{
+				// GameMode의 레벨 경로를 Widget에 주입
+				if (!RoundNextLevel.IsNull())
+				{
+					CurrentLoadingWidget->OverrideLevelPath = 
+						RoundNextLevel.ToSoftObjectPath().GetLongPackageName();
+				}
+
+				CurrentLoadingWidget->StartLoading(ELoadingType::RoundTransition, 3.0f);
+				CurrentLoadingWidget->SetLoadingText(FString::Printf(
+					TEXT("Round %d\n\n레드팀: %d\n블루팀: %d"),
+					CurrentRound, RedTeamScore, BlueTeamScore
+				));
+				CurrentLoadingWidget->AddToViewport(100);
+				CurrentLoadingWidget->OnLoadingComplete.AddDynamic(
+					this, &AFPGameMode::OnRoundTransitionLoadingComplete);
+
+				UE_LOG(LogTemp, Warning, TEXT("✓ Round Transition Loading shown - Round %d"), CurrentRound);
+				break;
+			}
+		}
+	}
+}
+void AFPGameMode::OnRoundTransitionLoadingComplete()
+{
+	UE_LOG(LogTemp, Warning, TEXT("✓ Round Transition Loading Complete - Starting next round"));
+	
+	// 다음 라운드 준비
+	CurrentRound++;
+	
+	AFPGameState* GS = GetGameState<AFPGameState>();
+	if (GS)
+	{
+		GS->CurrentRound = CurrentRound;
+		GS->SetGamePhase(EFPGamePhase::InGame);
+	}
+	
+	// 라운드 점수만 초기화 (누적은 유지)
+	RedTeamScore = 0;
+	BlueTeamScore = 0;
+	
+	if (GS)
+	{
+		GS->RedTeamScore = 0;
+		GS->BlueTeamScore = 0;
+	}
+	
+	// 모든 플레이어에게 라운드 결과 UI 숨김
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		AFPPlayerController* PC = Cast<AFPPlayerController>(It->Get());
+		if (PC)
+		{
+			PC->ClientHideRoundResult();
+		}
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("=== Round %d 시작 ==="), CurrentRound);
+}
+
