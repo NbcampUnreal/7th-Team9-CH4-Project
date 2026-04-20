@@ -6,6 +6,7 @@
 #include "FPPlayerController.generated.h"
 
 class AFPGameState;
+class UFPLoadingWidget;
 
 //채팅 저장
 USTRUCT(BlueprintType)
@@ -67,6 +68,9 @@ public:
 
 	UFUNCTION(Client, Reliable)
 	void ClientShowFinalResult();
+
+	UFUNCTION(Client, Reliable)
+	void ClientShowPostTravelLoading(TSubclassOf<UFPLoadingWidget> LoadingClass, float Duration, const FString& LoadingText);
 
 	UFUNCTION(Exec)
 	void DebugEndRound();

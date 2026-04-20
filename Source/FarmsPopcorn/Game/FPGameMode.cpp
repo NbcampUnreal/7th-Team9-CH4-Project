@@ -2,6 +2,7 @@
 #include "FPGameState.h"
 #include "FPGameInstance.h"
 #include "Player/FPPlayerState.h"
+#include "Player/FPPlayerController.h"
 #include "UI/FPLoadingWidget.h"
 
 
@@ -62,6 +63,18 @@ void AFPGameMode::HandleSeamlessTravelPlayer(AController*& C)
 	}
 	AssignCharacterToPlayer(PC);
 	AssignTeam(PC);
+
+	if (LoadingWidgetClass)
+	{
+		if (AFPPlayerController* FPPC = Cast<AFPPlayerController>(PC))
+		{
+			FPPC->ClientShowPostTravelLoading(
+				LoadingWidgetClass,
+				2.0f,
+				TEXT("맵 로딩 중...")
+			);
+		}
+	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("✓ Player initialized after seamless travel"));
 }

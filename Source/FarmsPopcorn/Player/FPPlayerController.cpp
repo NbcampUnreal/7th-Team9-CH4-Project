@@ -7,6 +7,7 @@
 #include "Game/FPGameInstance.h"
 #include "GameFramework/GameStateBase.h"
 #include "Game/FPGameState.h"
+#include "UI/FPLoadingWidget.h"
 #include "GameFramework/PlayerController.h"
 
 
@@ -187,6 +188,27 @@ void AFPPlayerController::ClientReceiveChatMessage_Implementation(const FString&
 void AFPPlayerController::ClientShowFinalResult_Implementation()
 {
 
+}
+
+void AFPPlayerController::ClientShowPostTravelLoading_Implementation(TSubclassOf<UFPLoadingWidget> LoadingClass, float Duration, const FString& LoadingText)
+{
+	if (!IsLocalController() || !LoadingClass)
+	{
+		return;
+	}
+
+	UFPLoadingWidget* LoadingWidget = CreateWidget<UFPLoadingWidget>(this, LoadingClass);
+	if (!LoadingWidget)
+	{
+		return;
+	}
+
+	LoadingWidget->AddToViewport(200);
+	LoadingWidget->StartLoading(ELoadingType::Custom, Duration);
+	if (!LoadingText.IsEmpty())
+	{
+		LoadingWidget->SetLoadingText(LoadingText);
+	}
 }
 void AFPPlayerController::DebugEndRound()
 {
