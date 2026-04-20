@@ -1,8 +1,9 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include  "Core/FPTeamID.h"
+#include "Net/UnrealNetwork.h"
 #include "FPPlayerState.generated.h"
 
 UCLASS()
@@ -48,6 +49,8 @@ private:
 	//  할당된 캐릭터 아이콘 (UI 표시용)
 	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Character")
 	TSoftObjectPtr<UTexture2D> AssignedCharacterIcon;
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Character")
+	int32 CharacterIndex = 0;
 	
 #pragma endregion 	//캐릭터 이름 설정 끝
 	

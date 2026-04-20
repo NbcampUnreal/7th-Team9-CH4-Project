@@ -1,4 +1,4 @@
-#include "Player/FPPlayerState.h"
+﻿#include "Player/FPPlayerState.h"
 #include "FPPlayerCharacter.h"
 #include "Game/FPGameInstance.h"
 #include "Game/FPGameMode.h"
@@ -7,7 +7,7 @@
 AFPPlayerState::AFPPlayerState()
 	:CustomPlayerName("NoneName")
 {
-	
+	CharacterIndex = 0;
 }
 
 void AFPPlayerState::BeginPlay()
@@ -95,5 +95,5 @@ void AFPPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(AFPPlayerState, AssignedCharacterClass);
 	DOREPLIFETIME(AFPPlayerState, AssignedCharacterName);
 	DOREPLIFETIME(AFPPlayerState, AssignedCharacterIcon);
-	
+	DOREPLIFETIME(AFPPlayerState, CharacterIndex);
 }

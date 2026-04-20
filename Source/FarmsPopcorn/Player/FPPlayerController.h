@@ -7,6 +7,7 @@
 
 class AFPGameState;
 class UFPLoadingWidget;
+class UUserWidget;
 
 //채팅 저장
 USTRUCT(BlueprintType)
@@ -43,7 +44,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UUserWidget> InGameScoreWidgetClass;
 	UPROPERTY()
-	class UUserWidget* InGameScoreWidget;
+	class UUserWidget* InGameScore;
+	UPROPERTY()
+	UUserWidget* InGameScoreWidget;
+
+	void CheckGameStateAndCreateUI();
+	virtual void PostSeamlessTravel() override;
+
 public:
 	UFUNCTION(Server, Reliable)
 	void ServerSetCustomName(const FString& NewName);

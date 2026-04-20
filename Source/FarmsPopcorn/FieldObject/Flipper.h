@@ -37,6 +37,9 @@ public:
     UPROPERTY(EditAnywhere, Category = "Settings")
     float BaseLaunchStrength = 4000.0f;
 
+    UPROPERTY(EditAnywhere, Category = "Settings")
+    float StartOffset = 0.0f;
+
 private:
     float ElapsedTime = 0.0f;
 
@@ -48,4 +51,7 @@ private:
 
     UFUNCTION()
     void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+protected:
+    virtual void BeginPlay() override;
 };

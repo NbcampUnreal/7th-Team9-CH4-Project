@@ -1,6 +1,7 @@
 ﻿#include "Player/FPPlayerController.h"
 #include "Blueprint/UserWidget.h"
 #include "UI/FPResultWidget.h"
+#include "UI/FPUIManagerSubsystem.h"
 #include "FPPlayerState.h"
 #include "Game/FPGameMode.h"
 #include "Engine/World.h"
@@ -23,17 +24,16 @@ void AFPPlayerController::BeginPlay()
 			UE_LOG(LogTemp, Warning, TEXT("서버에 캐릭터 복구 요청 중: %s"), *GI->SaveCharacterID.ToString());
 			Server_RestoreCharacter(GI->SaveCharacterID, GI->SaveCharacterClass);
 		}
-		if (GetWorld() && GetWorld()->GetGameState<AFPGameState>())
+		FString MapName = GetWorld()->GetMapName();
+		bool bIsMenuMap = MapName.Contains(TEXT("Login")) || MapName.Contains(TEXT("Lobby")) || MapName.Contains(TEXT("Create")) || MapName.Contains(TEXT("Result"));
+		if (!bIsMenuMap)
 		{
-			if (InGameScoreWidgetClass)
-			{
-				UUserWidget* ScoreUI = CreateWidget<UUserWidget>(this, InGameScoreWidgetClass);
-				if (ScoreUI)
-				{
-					ScoreUI->AddToViewport();
-					UE_LOG(LogTemp, Warning, TEXT("인게임 점수판 UI가 화면에 추가되었습니다"));
-				}
-			}
+			UE_LOG(LogTemp, Warning, TEXT("인게임 맵 진입 확인 (%s): UI 복구를 시도합니다."), *MapName);
+			CheckGameStateAndCreateUI();
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("메뉴 맵 진입 (%s): 점수판을 생성하지 않습니다."), *MapName);
 		}
 	}
 }
@@ -42,8 +42,39 @@ void AFPPlayerController::BeginPlayingState()
 {
 	Super::BeginPlayingState();
 	ApplyGameplayInputMode();
+	if (IsLocalController())
+	{
+		FString MapName = GetWorld()->GetMapName();
+		bool bIsMenuMap =
+			MapName.Contains(TEXT("Login")) ||
+			MapName.Contains(TEXT("Lobby")) ||
+			MapName.Contains(TEXT("Create")) ||
+			MapName.Contains(TEXT("Result"));
+		if (!bIsMenuMap)
+		{
+			CheckGameStateAndCreateUI();
+		}
+	}
 }
 
+void AFPPlayerController::PostSeamlessTravel()
+{
+
+	Super::PostSeamlessTravel();
+
+	if (IsLocalController())
+	{
+		FTimerHandle UITimer;
+		GetWorldTimerManager().SetTimer(UITimer, [this]() {
+			FString MapName = GetWorld()->GetMapName();
+			bool bIsMenuMap = MapName.Contains(TEXT("Login")) || MapName.Contains(TEXT("Lobby")) || MapName.Contains(TEXT("Create"));
+			if (!bIsMenuMap)
+			{
+				CheckGameStateAndCreateUI();
+			}
+			}, 0.1f, false);
+	}
+}
 void AFPPlayerController::ApplyGameplayInputMode()
 {
 	if (!IsLocalController())
@@ -63,10 +94,53 @@ void AFPPlayerController::ServerSetCustomName_Implementation(const FString& NewN
 	if (AFPPlayerState* PS = GetPlayerState<AFPPlayerState>())
 	{
 		PS->CustomPlayerName = NewName;
-		UE_LOG(LogTemp, Warning, TEXT("플레이어 %s의 "), 
-		*PS->GetPlayerName(), *NewName);
+		UE_LOG(LogTemp, Warning, TEXT("플레이어 %s의 "),
+			*PS->GetPlayerName(), *NewName);
 	}
-	
+
+}
+
+void AFPPlayerController::CheckGameStateAndCreateUI()
+{
+	//UI매니저 가져오기
+	UFPUIManagerSubsystem* UISubsystem = GetGameInstance()->GetSubsystem<UFPUIManagerSubsystem>();
+	if (!UISubsystem)
+	{
+		return;
+	}
+	//위젯 중복 확인
+	if (UISubsystem->PersistentScoreWidget)
+	{
+		InGameScoreWidget = UISubsystem->PersistentScoreWidget;
+
+		if (!InGameScoreWidget->IsInViewport())
+		{
+			InGameScoreWidget->AddToViewport();
+
+			InGameScoreWidget->SetVisibility(ESlateVisibility::Visible);
+			
+		}
+		return;
+	}
+	if (GetWorld() && GetWorld()->GetGameState<AFPGameState>())
+	{
+		if (InGameScoreWidgetClass)
+		{
+			InGameScoreWidget = CreateWidget<UUserWidget>(this, InGameScoreWidgetClass);
+			if (InGameScoreWidget)
+			{
+				InGameScoreWidget->AddToViewport();
+				InGameScoreWidget->SetVisibility(ESlateVisibility::Visible);
+				UISubsystem->PersistentScoreWidget = InGameScoreWidget;
+
+			}
+			else
+			{
+				FTimerHandle TimerHandle;
+				GetWorldTimerManager().SetTimer(TimerHandle, this, &AFPPlayerController::CheckGameStateAndCreateUI, 0.2f, false);
+			}
+		}
+	}
 }
 
 void AFPPlayerController::SetReady(bool bNewReadyState)
@@ -78,7 +152,7 @@ void AFPPlayerController::SetReady(bool bNewReadyState)
 	}
 	if (AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode()))
 	{
-		GM->CheckAllPlayersReady(); 
+		GM->CheckAllPlayersReady();
 	}
 }
 void AFPPlayerController::ClientHideRoundResult_Implementation()
@@ -103,6 +177,11 @@ void AFPPlayerController::ClientShowRoundResult_Implementation()
 	{
 		RoundResultWidget->AddToViewport(10);
 
+		if (InGameScoreWidget)
+		{
+			InGameScoreWidget->SetVisibility(ESlateVisibility::Hidden);
+		}
+
 
 		UFPResultWidget* RoundUI = Cast<UFPResultWidget>(RoundResultWidget);
 		if (RoundUI)
@@ -119,7 +198,7 @@ void AFPPlayerController::ClientShowRoundResult_Implementation()
 void AFPPlayerController::Server_RestoreCharacter_Implementation(FName SavedID, TSubclassOf<APawn> SavedClass)
 {
 	if (!HasAuthority()) return;
-    
+
 	AFPPlayerState* PS = GetPlayerState<AFPPlayerState>();
 	if (!PS)
 	{
@@ -136,7 +215,7 @@ void AFPPlayerController::Server_RestoreCharacter_Implementation(FName SavedID, 
 	{
 		PS->AssignedCharacterID = SavedID;
 		PS->AssignedCharacterClass = SavedClass;
-		
+
 		if (AFPGameMode* GM = GetWorld()->GetAuthGameMode<AFPGameMode>())
 		{
 			GM->RestartPlayer(this);
@@ -153,7 +232,7 @@ void AFPPlayerController::Client_SaveCharacterToInstance_Implementation(FName Ch
 	{
 		GI->SaveCharacterID = CharID;
 		GI->SaveCharacterClass = CharClass;
-		
+
 		UE_LOG(LogTemp, Warning, TEXT("내 캐릭터 정보 (%s)가 인스턴스에 저장되었습니다."), *CharID.ToString());
 	}
 }
