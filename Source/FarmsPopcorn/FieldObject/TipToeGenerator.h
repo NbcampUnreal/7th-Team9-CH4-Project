@@ -16,6 +16,8 @@ public:
 
     virtual void OnConstruction(const FTransform& Transform) override;
 
+    virtual void BeginPlay() override;
+
 protected:
     UPROPERTY(VisibleAnywhere, Category = "Components")
     class UInstancedStaticMeshComponent* RealMeshComp;
@@ -31,8 +33,23 @@ protected:
     UPROPERTY(EditAnywhere, Category = "TipToe Settings")
     int32 Columns;
 
-    // 블록 한 칸의 크기 조절
+    // 블록의 크기
     UPROPERTY(EditAnywhere, Category = "TipToe Settings")
+    float MeshSize;
+
+    // 블록 간격
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TipToe Settings")
+    float Padding;
+
+    // 블록 사이즈 자동 측정
+    UPROPERTY(EditAnywhere, Category = "TipToe Settings")
+    bool bAutoSizeToMesh;
+
+    // 최종 간격
+    float FinalInterval;
+
+    // 블록 한 칸의 크기 조절
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TipToe Settings")
     float BlockSize;
 
     // 가짜 발판이 섞일 확률 (0.0 ~ 1.0)
