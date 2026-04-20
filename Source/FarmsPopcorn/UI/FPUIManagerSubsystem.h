@@ -15,4 +15,7 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, Category = "Player Data")
 	FString SavedNickName;
+
+	UPROPERTY()
+	TObjectPtr<class UUserWidget> PersistentScoreWidget;
 };

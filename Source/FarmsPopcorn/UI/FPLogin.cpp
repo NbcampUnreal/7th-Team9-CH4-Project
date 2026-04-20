@@ -18,15 +18,21 @@ void UFPLogin::NativeConstruct()
 		PC = GetWorld()->GetFirstPlayerController();
 	}
 	//UI전용 입력 모드 설정
-	if (PC)
-	{
-		PC->bShowMouseCursor = true;
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, FTimerDelegate::CreateLambda([this]()
+		{
+			APlayerController* PC = GetOwningPlayer();
+			if (PC)
+			{
+				PC->bShowMouseCursor = true;
+				FInputModeUIOnly InputMode;
+				InputMode.SetWidgetToFocus(TakeWidget());
+				PC->SetInputMode(InputMode);
+			}
+		}), 0.1f, false);
+	
 		
-		FInputModeUIOnly InputMode;
-		InputMode.SetWidgetToFocus(TakeWidget());
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		PC->SetInputMode(InputMode);
-	}
+
 
 	//버튼 클릭 바인딩
 	if (LoginButton)
@@ -53,7 +59,6 @@ void UFPLogin::NativeConstruct()
 	//Confirm 버튼이 있으면 회원가입 확인 함수 바인딩
 	if (ConfirmButton)
 	{
-		ConfirmButton->OnClicked.AddDynamic(this, &UFPLogin::OnConfirmClicked);
 		ConfirmButton->OnClicked.AddDynamic(this, &UFPLogin::OnConfirmClicked);
 	}
 	//if (BackButton)
@@ -83,24 +88,19 @@ void UFPLogin::OnLoginClicked()
 		{
 			PC = GetWorld()->GetFirstPlayerController();
 		}
-		UE_LOG(LogTemp, Warning, TEXT("Login Success"));
 		//닉네임 생성 UI클래스나 컨트롤러가 없으면 종료
 		if (!CreateNameWidgetClass || !PC)
 		{
-			UE_LOG(LogTemp, Error, TEXT("CreateWidget Failed"));
 			return;
 		}
 		//닉네임 생성 위젯 생성후 화면에 표시
 		UUserWidget* CreateNameUI = CreateWidget<UUserWidget>(PC, CreateNameWidgetClass);
 		if (CreateNameUI)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Widget Created"));
 
 			CreateNameUI->AddToViewport(100);
-			UE_LOG(LogTemp, Warning, TEXT("Added to Viewport"));
 			//현재 로그인 위젯 제거
 			RemoveFromParent();
-			UE_LOG(LogTemp, Warning, TEXT("Login UI Removed"));
 		}
 		return;
 	}

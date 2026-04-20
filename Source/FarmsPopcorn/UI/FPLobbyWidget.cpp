@@ -10,6 +10,7 @@
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Kismet/GameplayStatics.h"
+#include "Engine/Texture2D.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework//PlayerState.h"
 #include "FPUIManagerSubsystem.h"
@@ -114,8 +115,13 @@ void UFPLobbyWidget::OnPlayerJoined(const FString& PlayerName, int32 CharacterIn
 		UFPPlayerListEntryWidget* NewEntry = CreateWidget<UFPPlayerListEntryWidget>(this, PlayerListEntryWidgetClass);
 		if (NewEntry)
 		{
+			UTexture2D* IconToSet = DefaultIcon;
 			//닉네임 + 초기 준비상태설정
-			NewEntry->SetPlayerInfo(PlayerName, false);
+			NewEntry->SetPlayerInfo(PlayerName, false, IconToSet);
+			if (CharacterImages.IsValidIndex(CharacterIndex))
+			{
+				IconToSet = CharacterImages[CharacterIndex];
+			}
 			//닉네임 기준으로 목록 맵 저장
 			ListEntryMap.Add(PlayerName, NewEntry);
 		}
@@ -193,8 +199,8 @@ void UFPLobbyWidget::CheckPlayerArray()
 	AGameStateBase* GS = GetWorld()->GetGameState();
 	if (!GS || !RedTeamListBox || !BlueTeamListBox) return;
 	//디버그 로그
-	UE_LOG(LogTemp, Warning, TEXT("PlayerArray 크기: %d"), GS->PlayerArray.Num());
-	UE_LOG(LogTemp, Warning, TEXT("HasAuthority: %s"), *FString(GetWorld()->GetNetMode() == NM_ListenServer ? TEXT("ListenServer") : TEXT("Client")));
+	//UE_LOG(LogTemp, Warning, TEXT("PlayerArray 크기: %d"), GS->PlayerArray.Num());
+	//UE_LOG(LogTemp, Warning, TEXT("HasAuthority: %s"), *FString(GetWorld()->GetNetMode() == NM_ListenServer ? TEXT("ListenServer") : TEXT("Client")));
 	RedTeamListBox->ClearChildren();
 	BlueTeamListBox->ClearChildren();
 	ListEntryMap.Empty();
@@ -209,7 +215,7 @@ void UFPLobbyWidget::CheckPlayerArray()
 		FString Name = (FPS && !FPS->CustomPlayerName.IsEmpty())
 			? FPS->CustomPlayerName
 			: PS->GetPlayerName();
-		UE_LOG(LogTemp, Warning, TEXT("플레이어 이름: %s"), *Name);
+		//UE_LOG(LogTemp, Warning, TEXT("플레이어 이름: %s"), *Name);
 		CurrentPlayerNames.Add(Name);
 		//새로 들어온 플레이어 요청
 		if (PlayerListEntryWidgetClass)
@@ -217,8 +223,12 @@ void UFPLobbyWidget::CheckPlayerArray()
 			UFPPlayerListEntryWidget* NewEntry = CreateWidget<UFPPlayerListEntryWidget>(this, PlayerListEntryWidgetClass);
 			if (NewEntry)
 			{
-				NewEntry->SetPlayerInfo(Name, FPS ? FPS->bIsReady : false);
-				ListEntryMap.Add(Name, NewEntry);
+				UTexture2D* SelectedIcon = DefaultIcon;
+				if (FPS && CharacterImages.IsValidIndex(FPS->CharacterIndex))
+				{
+					SelectedIcon = CharacterImages[FPS->CharacterIndex];
+				}
+				NewEntry->SetPlayerInfo(Name, FPS ? FPS->bIsReady : false, SelectedIcon);
 
 				//팀에 맞는 박스 추가
 				UVerticalBox* TargetBox = (FPS && FPS->TeamID == EFPTeamID::TeamRed) ? RedTeamListBox : BlueTeamListBox;
