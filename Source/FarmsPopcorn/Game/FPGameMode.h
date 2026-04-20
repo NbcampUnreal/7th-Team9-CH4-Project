@@ -7,6 +7,7 @@
 #include "FPGameMode.generated.h"
 
 class AFPPlayerState;
+class UFPLoadingWidget;
 UCLASS()
 class FARMSPOPCORN_API AFPGameMode : public AGameMode
 {
@@ -118,4 +119,21 @@ private:
     void StartNextRound();
 #pragma endregion
 
+    
+public:
+#pragma region Loading
+    UPROPERTY(EditAnywhere, Category = "UI|Loading")
+    TSubclassOf<UFPLoadingWidget> LoadingWidgetClass;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Level")
+    TSoftObjectPtr<UWorld> RoundNextLevel;
+    UPROPERTY()
+    UFPLoadingWidget* CurrentLoadingWidget = nullptr;
+    
+    // 로딩 위젯 관련 함수
+    void ShowRoundTransitionLoading();
+    
+    UFUNCTION()
+    void OnRoundTransitionLoadingComplete();
+#pragma endregion 
 };
