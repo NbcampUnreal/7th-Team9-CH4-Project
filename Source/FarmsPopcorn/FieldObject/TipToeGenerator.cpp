@@ -60,7 +60,7 @@ void ATipToeGenerator::GenerateMaze()
     int32 CurrentY = FMath::RandRange(0, Columns - 1);
     GridData[GetIndex(CurrentX, CurrentY)] = true;
 
-    // 도착 지점(Rows - 1)에 도착까지 길 생성
+    // 도착 지점에 도착까지 길 생성
     while (CurrentX < Rows - 1)
     {
         // 50% 확률로 직진 또는 좌우 이동
