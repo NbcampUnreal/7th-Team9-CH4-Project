@@ -54,7 +54,8 @@ protected:
 	//캐릭터 아이콘
 	UPROPERTY(EditDefaultsOnly)
 	TArray<class UTexture2D*> CharacterImages;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	class UTexture2D* DefaultIcon;
 
 	//준비 버튼 클릭
 	UFUNCTION()

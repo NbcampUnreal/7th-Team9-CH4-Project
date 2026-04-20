@@ -2,12 +2,14 @@
 #include "Game/FPGameState.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
+#include "Player/FPPlayerState.h"
 
 
 AFPGameState::AFPGameState()
 {
 	bAllReady = false;
 	GamePhase = EFPGamePhase::Lobby;
+
 }
 
 
