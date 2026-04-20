@@ -75,21 +75,6 @@ void UFPIntroWidget::NativeConstruct()
             UE_LOG(LogTemp, Warning, TEXT("✓ BackgroundOverlay created"));
         }
     }
-
-    //MediaSoundComponent 동적 생성 (Widget에 없으면 생성)
-    if (!MediaSoundComponent)
-    {
-        MediaSoundComponent = NewObject<UMediaSoundComponent>(this);
-        if (MediaSoundComponent)
-        {
-            MediaSoundComponent->RegisterComponent();
-            UE_LOG(LogTemp, Warning, TEXT("✓ MediaSoundComponent created dynamically"));
-        }
-    }
-    else
-    {
-        UE_LOG(LogTemp, Warning, TEXT("✓ MediaSoundComponent already exists"));
-    }
     
     // 영상 시작
     PlayVideoPhase();
@@ -101,6 +86,15 @@ void UFPIntroWidget::NativeDestruct()
     {
         MediaPlayer->OnEndReached.RemoveDynamic(this, &UFPIntroWidget::OnMediaPlayerFinished);
         MediaPlayer->Close();
+        MediaPlayer->Pause();
+    }
+    
+    // 사운드 정지
+    if (MediaSoundComponent)
+    {
+        MediaSoundComponent->SetVolumeMultiplier(0.0f);
+        MediaSoundComponent->Stop();
+        UE_LOG(LogTemp, Warning, TEXT("✓ MediaSoundComponent stopped"));
     }
     
     // 오버레이 정리
@@ -141,32 +135,54 @@ void UFPIntroWidget::PlayVideoPhase()
     PhaseTimer = 0.0f;
     bHasTransitioned = false;
 
-    if (!MediaPlayer) return;
-
-    // 1. 월드에 이미 배치된 MediaSoundComponent 찾기
+    if (!MediaPlayer) 
+    {
+        UE_LOG(LogTemp, Error, TEXT("❌ MediaPlayer is NULL"));
+        return;
+    }
+    
+    // ⭐ 월드에 배치된 MediaSoundComponent 찾기 (첫 번째 실행 시만)
     if (!MediaSoundComponent)
     {
         TArray<AActor*> FoundActors;
         UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), FoundActors);
+        
         for (AActor* Actor : FoundActors)
         {
-            if (UMediaSoundComponent* SoundComp = Actor->FindComponentByClass<UMediaSoundComponent>())
+            UMediaSoundComponent* SoundComp = Actor->FindComponentByClass<UMediaSoundComponent>();
+            if (SoundComp)
             {
                 MediaSoundComponent = SoundComp;
+                UE_LOG(LogTemp, Warning, TEXT("✓ Found MediaSoundComponent in world actor: %s"), *Actor->GetName());
                 break;
             }
         }
+        
+        if (!MediaSoundComponent)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("⚠ MediaSoundComponent not found in world - sound may not work properly"));
+            UE_LOG(LogTemp, Warning, TEXT("⚠ Make sure you have a Media Actor with MediaSoundComponent placed in the level"));
+        }
     }
-
-    // 2. 연결 및 재생 (복잡한 생성 로직 삭제)
+    
+    // MediaSoundComponent 연결
     if (MediaSoundComponent)
     {
         MediaSoundComponent->SetMediaPlayer(MediaPlayer);
+        MediaSoundComponent->SetVolumeMultiplier(1.0f);
+        UE_LOG(LogTemp, Warning, TEXT("✓ MediaSoundComponent linked to MediaPlayer"));
     }
-
-    MediaPlayer->Play();
     
-    // 이벤트 바인딩 (중복 방지를 위해 한번 제거 후 추가)
+    // MediaPlayer 자체 사운드 활성화 (백업)
+    MediaPlayer->SetNativeVolume(1.0f);
+    
+    // 영상 재생
+    MediaPlayer->Play();
+    UE_LOG(LogTemp, Warning, TEXT("▶ PLAYING VIDEO"));
+    UE_LOG(LogTemp, Warning, TEXT("   - VideoPlayDuration: %.2f sec"), VideoPlayDuration);
+    UE_LOG(LogTemp, Warning, TEXT("   - DissolveSpeed: %.2f sec"), DissolveSpeed);
+    
+    // 이벤트 바인딩 (중복 방지를 위해 먼저 제거)
     MediaPlayer->OnEndReached.RemoveDynamic(this, &UFPIntroWidget::OnMediaPlayerFinished);
     MediaPlayer->OnEndReached.AddDynamic(this, &UFPIntroWidget::OnMediaPlayerFinished);
 }
@@ -254,8 +270,10 @@ void UFPIntroWidget::ShowLoadingWidget()
             UFPLoadingWidget* LoadingWidget = CreateWidget<UFPLoadingWidget>(PC, LoadingWidgetClass);
             if (LoadingWidget)
             {
-                LoadingWidget->AddToViewport(0);
+                // Intro 로딩 타입으로 시작 (3초 후 자동으로 다음 레벨)
                 LoadingWidget->StartLoading(ELoadingType::Intro, 3.0f);
+                LoadingWidget->AddToViewport(0);
+                
                 UE_LOG(LogTemp, Warning, TEXT("✓ LoadingWidget created and displayed"));
                 
                 // 현재 IntroWidget 제거
