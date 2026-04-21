@@ -14,6 +14,7 @@ class UInputMappingContext;
 class UInputAction;
 class UNiagaraSystem;
 class UNiagaraComponent;
+class USoundBase;
 
 UENUM(BlueprintType)
 enum class EItemType : uint8
@@ -179,6 +180,10 @@ protected:
     UPROPERTY(ReplicatedUsing = OnRep_CurrentItem,
         BlueprintReadOnly, Category = "PR|Item")
     EItemType CurrentItem = EItemType::None;
+
+    // 아이템별 사운드를 저장할 맵 (에디터에서 할당)
+    UPROPERTY(EditAnywhere, Category = "Item|Sound")
+    TMap<EItemType, USoundBase*> ItemSounds;
 
     UFUNCTION()
     void OnRep_CurrentItem();   // 아이템 UI 갱신 트리거
