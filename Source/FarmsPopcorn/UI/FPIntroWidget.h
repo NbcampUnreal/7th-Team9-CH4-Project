@@ -67,7 +67,7 @@ private:
     EIntroPhase CurrentPhase = EIntroPhase::Video;
     float PhaseTimer = 0.0f;
     bool bHasTransitioned = false;
-    
+    UFUNCTION()
     void OnMediaPlayerFinished();
     void PlayVideoPhase();
     void PlayTransitionPhase(float DeltaTime);

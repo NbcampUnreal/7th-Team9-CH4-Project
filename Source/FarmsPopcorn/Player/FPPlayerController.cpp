@@ -10,6 +10,8 @@
 #include "Game/FPGameInstance.h"
 #include "GameFramework/GameStateBase.h"
 #include "Game/FPGameState.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Player/FPPlayerCharacter.h"
 #include "UI/FPLoadingWidget.h"
 #include "GameFramework/PlayerController.h"
 
@@ -181,8 +183,6 @@ void AFPPlayerController::ServerSetCustomName_Implementation(const FString& NewN
 	if (AFPPlayerState* PS = GetPlayerState<AFPPlayerState>())
 	{
 		PS->CustomPlayerName = NewName;
-		UE_LOG(LogTemp, Warning, TEXT("플레이어 %s의 "),
-			*PS->GetPlayerName(), *NewName);
 	}
 
 }
@@ -376,6 +376,20 @@ void AFPPlayerController::ClientShowPostTravelLoading_Implementation(TSubclassOf
 		LoadingWidget->SetLoadingText(LoadingText);
 	}
 }
+
+void AFPPlayerController::ClientSetCountdownInputLock_Implementation(bool bLocked)
+{
+	SetIgnoreMoveInput(bLocked);
+	SetIgnoreLookInput(bLocked);
+	FlushPressedKeys();
+
+	if (AFPPlayerCharacter* PC = Cast<AFPPlayerCharacter>(GetPawn()))
+	{
+		PC->GetCharacterMovement()->StopMovementImmediately();
+		PC->ConsumeMovementInputVector();
+	}
+}
+
 void AFPPlayerController::DebugEndRound()
 {
 	// 서버인지 확인

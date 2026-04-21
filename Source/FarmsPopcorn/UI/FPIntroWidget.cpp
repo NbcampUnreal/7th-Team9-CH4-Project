@@ -1,4 +1,6 @@
 ﻿#include "FPIntroWidget.h"
+
+#include "EngineUtils.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
 #include "Components/Image.h"
@@ -82,22 +84,17 @@ void UFPIntroWidget::NativeConstruct()
 
 void UFPIntroWidget::NativeDestruct()
 {
-    if (MediaPlayer)
+    if (MediaPlayer && MediaPlayer->OnEndReached.IsBound())
     {
         MediaPlayer->OnEndReached.RemoveDynamic(this, &UFPIntroWidget::OnMediaPlayerFinished);
         MediaPlayer->Close();
-        MediaPlayer->Pause();
     }
     
-    // 사운드 정지
     if (MediaSoundComponent)
     {
-        MediaSoundComponent->SetVolumeMultiplier(0.0f);
         MediaSoundComponent->Stop();
-        UE_LOG(LogTemp, Warning, TEXT("✓ MediaSoundComponent stopped"));
     }
     
-    // 오버레이 정리
     if (BackgroundOverlay)
     {
         BackgroundOverlay->RemoveFromParent();
@@ -141,49 +138,41 @@ void UFPIntroWidget::PlayVideoPhase()
         return;
     }
     
-    // ⭐ 월드에 배치된 MediaSoundComponent 찾기 (첫 번째 실행 시만)
+    // MediaSoundComponent 찾기
     if (!MediaSoundComponent)
     {
-        TArray<AActor*> FoundActors;
-        UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), FoundActors);
-        
-        for (AActor* Actor : FoundActors)
+        if (UWorld* World = GetWorld())
         {
-            UMediaSoundComponent* SoundComp = Actor->FindComponentByClass<UMediaSoundComponent>();
-            if (SoundComp)
+            for (TActorIterator<AActor> ActorItr(World); ActorItr; ++ActorItr)
             {
-                MediaSoundComponent = SoundComp;
-                UE_LOG(LogTemp, Warning, TEXT("✓ Found MediaSoundComponent in world actor: %s"), *Actor->GetName());
-                break;
+                if (UMediaSoundComponent* SoundComp = ActorItr->FindComponentByClass<UMediaSoundComponent>())
+                {
+                    MediaSoundComponent = SoundComp;
+                    UE_LOG(LogTemp, Warning, TEXT("✓ Found MediaSoundComponent"));
+                    break;
+                }
             }
-        }
-        
-        if (!MediaSoundComponent)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("⚠ MediaSoundComponent not found in world - sound may not work properly"));
-            UE_LOG(LogTemp, Warning, TEXT("⚠ Make sure you have a Media Actor with MediaSoundComponent placed in the level"));
         }
     }
     
-    // MediaSoundComponent 연결
     if (MediaSoundComponent)
     {
         MediaSoundComponent->SetMediaPlayer(MediaPlayer);
         MediaSoundComponent->SetVolumeMultiplier(1.0f);
-        UE_LOG(LogTemp, Warning, TEXT("✓ MediaSoundComponent linked to MediaPlayer"));
     }
     
-    // MediaPlayer 자체 사운드 활성화 (백업)
     MediaPlayer->SetNativeVolume(1.0f);
-    
-    // 영상 재생
     MediaPlayer->Play();
-    UE_LOG(LogTemp, Warning, TEXT("▶ PLAYING VIDEO"));
-    UE_LOG(LogTemp, Warning, TEXT("   - VideoPlayDuration: %.2f sec"), VideoPlayDuration);
-    UE_LOG(LogTemp, Warning, TEXT("   - DissolveSpeed: %.2f sec"), DissolveSpeed);
     
-    // 이벤트 바인딩 (중복 방지를 위해 먼저 제거)
-    MediaPlayer->OnEndReached.RemoveDynamic(this, &UFPIntroWidget::OnMediaPlayerFinished);
+    UE_LOG(LogTemp, Warning, TEXT("▶ PLAYING VIDEO (Duration: %.2fs)"), VideoPlayDuration);
+    
+    // ⭐ 이미 바인드된 경우를 대비해 먼저 제거
+    if (MediaPlayer->OnEndReached.IsBound())
+    {
+        MediaPlayer->OnEndReached.RemoveDynamic(this, &UFPIntroWidget::OnMediaPlayerFinished);
+    }
+    
+    // 바인딩
     MediaPlayer->OnEndReached.AddDynamic(this, &UFPIntroWidget::OnMediaPlayerFinished);
 }
 
@@ -191,27 +180,26 @@ void UFPIntroWidget::OnMediaPlayerFinished()
 {
     if (bHasTransitioned)
     {
-        return; // 중복 호출 방지
+        return;
     }
     
     bHasTransitioned = true;
-    UE_LOG(LogTemp, Warning, TEXT("📹 VIDEO FINISHED - Starting %.2f second fade out"), DissolveSpeed);
+    UE_LOG(LogTemp, Warning, TEXT("📹 VIDEO FINISHED - Fading out..."));
     
     CurrentPhase = EIntroPhase::Transition;
     PhaseTimer = 0.0f;
     
-    // 영상 멈추기
     if (MediaPlayer)
     {
         MediaPlayer->Pause();
     }
     
-    // 사운드 페이드 아웃
     if (MediaSoundComponent)
     {
         MediaSoundComponent->SetVolumeMultiplier(0.0f);
     }
 }
+
 
 void UFPIntroWidget::PlayTransitionPhase(float DeltaTime)
 {

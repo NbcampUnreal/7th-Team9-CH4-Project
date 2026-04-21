@@ -12,6 +12,8 @@
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "NiagaraComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "Engine/LocalPlayer.h"  //추가사항
 
 AFPPlayerCharacter::AFPPlayerCharacter()
@@ -319,42 +321,36 @@ void AFPPlayerCharacter::UseFan()
 
 void AFPPlayerCharacter::UseMagnet()
 {
-    if (!HasAuthority()) return; // 서버에서만 물리 실행
-    UE_LOG(LogTemp, Warning, TEXT("UseMagnet 함수가 시작되었습니다! (서버 여부: %d)"), HasAuthority());
-    FVector Start = GetActorLocation() + FVector(0.f, 0.f, 50.f);
-    FVector End = Start + (GetActorForwardVector() * 1000.f);
+    if (!HasAuthority()) return;
 
-    FHitResult Hit;
+    // UseFan()과 동일한 범위 검색 로직 활용
+    TArray<FOverlapResult> OverlapResults;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(1000.f); // 감지 반경
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
 
-    // [보완] LineTrace 대신 SweepSingle(구체 판정)을 써서 더 잘 맞게 변경
-    FCollisionShape Sphere = FCollisionShape::MakeSphere(100.f);
-
-    if (GetWorld()->SweepSingleByChannel(Hit, Start, End, FQuat::Identity, ECC_Pawn, Sphere, Params))
+    if (GetWorld()->OverlapMultiByChannel(OverlapResults, GetActorLocation(), FQuat::Identity, ECC_Pawn, Sphere, Params))
     {
-        UE_LOG(LogTemp, Warning, TEXT("충돌 성공! 맞은 액터: %s"), *Hit.GetActor()->GetName());
-        if (AFPPlayerCharacter* OtherChar = Cast<AFPPlayerCharacter>(Hit.GetActor()))
+        for (auto& Result : OverlapResults)
         {
+            AFPPlayerCharacter* OtherChar = Cast<AFPPlayerCharacter>(Result.GetActor());
+            if (!IsValid(OtherChar)) continue;
+
+            // 기존 팀 체크 로직 그대로 활용
             AFPPlayerState* MyPS = GetPlayerState<AFPPlayerState>();
             AFPPlayerState* OtherPS = OtherChar->GetPlayerState<AFPPlayerState>();
-
-            if (IsValid(MyPS) && IsValid(OtherPS) && MyPS->TeamID != OtherPS->TeamID)
+            if (MyPS && OtherPS && MyPS->TeamID != OtherPS->TeamID)
             {
-                UE_LOG(LogTemp, Log, TEXT("내 팀 ID: %d, 상대 팀 ID: %d"), (int32)MyPS->TeamID, (int32)OtherPS->TeamID);
+                // 상대방을 내 위치 방향으로 끌어당김
                 FVector PullDir = GetActorLocation() - OtherChar->GetActorLocation();
-                PullDir.Z += 0.2f;
                 PullDir.Normalize();
-                OtherChar->LaunchCharacter(PullDir * 3000.f, true, true);
+                OtherChar->LaunchCharacter(PullDir * 2000.f + FVector(0, 0, 300.f), true, true);
 
-                OtherChar->Multicast_PlayItemEffect(EItemType::Magnet);
-
-                // [추가] 사용 후 아이템 소모
-                CurrentItem = EItemType::None;
+                Multicast_PlayItemEffect(EItemType::Magnet);
+                break; // 한 명에게 적용되면 종료
             }
         }
     }
-    Multicast_PlayItemEffect(EItemType::Magnet);
 }
 
 void AFPPlayerCharacter::UseWaterBalloon()
@@ -362,47 +358,41 @@ void AFPPlayerCharacter::UseWaterBalloon()
 
     if (!HasAuthority()) return;
 
-    // 1. 함수 호출 확인 (서버/클라이언트 구분)
-    UE_LOG(LogTemp, Warning, TEXT("UseWaterBalloon 함수가 시작되었습니다! (서버 여부: %d)"), HasAuthority());
-
-    FVector Start = GetActorLocation() + FVector(0.f, 0.f, 50.f);
-    FVector End = Start + (GetActorForwardVector() * 500.f);
-    FHitResult Hit;
+    TArray<FOverlapResult> OverlapResults;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(800.f); // 감지 반경
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
 
-    FCollisionShape Sphere = FCollisionShape::MakeSphere(100.f);
-
-    if (!GetWorld()->SweepSingleByChannel(
-        Hit, Start, End, FQuat::Identity, ECC_Pawn, Sphere, Params)) return;
-
-    AFPPlayerCharacter* OtherChar = Cast<AFPPlayerCharacter>(Hit.GetActor());
-    if (!IsValid(OtherChar)) return;
-
-    AFPPlayerState* MyPS = GetPlayerState<AFPPlayerState>();
-    AFPPlayerState* OtherPS = OtherChar->GetPlayerState<AFPPlayerState>();
-    if (!IsValid(MyPS) || !IsValid(OtherPS)) return;
-    if (MyPS->TeamID == OtherPS->TeamID) return;
-
-    // 이동 정지
-    OtherChar->GetCharacterMovement()->StopMovementImmediately();
-    OtherChar->GetCharacterMovement()->MaxWalkSpeed = 0.f;
-
-    // 나이아가라 ON — OtherChar 본인한테 직접 호출
-    OtherChar->Multicast_StartWaterBalloonFreeze();
-
-    // 10초 후 복구
-    GetWorld()->GetTimerManager().SetTimer(
-        OtherChar->WaterBalloonFreezeTimerHandle,
-        [OtherChar]()
+    if (GetWorld()->OverlapMultiByChannel(OverlapResults, GetActorLocation(), FQuat::Identity, ECC_Pawn, Sphere, Params))
+    {
+        for (auto& Result : OverlapResults)
         {
-            if (!IsValid(OtherChar)) return;
-            OtherChar->GetCharacterMovement()->MaxWalkSpeed = 600.f;
-            OtherChar->Multicast_StopWaterBalloonFreeze();
-        },
-        10.0f, false);
+            AFPPlayerCharacter* OtherChar = Cast<AFPPlayerCharacter>(Result.GetActor());
+            if (!IsValid(OtherChar)) continue;
 
-    CurrentItem = EItemType::None;
+            AFPPlayerState* MyPS = GetPlayerState<AFPPlayerState>();
+            AFPPlayerState* OtherPS = OtherChar->GetPlayerState<AFPPlayerState>();
+            if (MyPS && OtherPS && MyPS->TeamID != OtherPS->TeamID)
+            {
+                // 상대방 속도를 0으로 변경 (가두기 효과)
+                OtherChar->GetCharacterMovement()->MaxWalkSpeed = 0.f;
+                OtherChar->Multicast_StartWaterBalloonFreeze();
+
+                // 헤더에 이미 선언된 WaterBalloonFreezeTimerHandle 사용
+                GetWorldTimerManager().SetTimer(WaterBalloonFreezeTimerHandle, [OtherChar]()
+                    {
+                        if (IsValid(OtherChar))
+                        {
+                            OtherChar->GetCharacterMovement()->MaxWalkSpeed = 600.f; // 복구
+                            OtherChar->Multicast_StopWaterBalloonFreeze();
+                        }
+                    }, 10.0f, false);
+
+                Multicast_PlayItemEffect(EItemType::WaterBalloon);
+                break;
+            }
+        }
+    }
 }
 
 void AFPPlayerCharacter::Multicast_StartWaterBalloonFreeze_Implementation()
@@ -493,6 +483,11 @@ void AFPPlayerCharacter::Multicast_PlayItemEffect_Implementation(
             );
         }
     
+    }
+    // 2. 사운드 재생 추가 (모든 플레이어의 위치에서 소리 발생)
+    if (ItemSounds.Contains(UsedItem) && ItemSounds[UsedItem])
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, ItemSounds[UsedItem], GetActorLocation());
     }
 }
 

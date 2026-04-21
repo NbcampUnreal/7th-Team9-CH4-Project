@@ -78,6 +78,8 @@ public:
 
 	UFUNCTION(Client, Reliable)
 	void ClientShowPostTravelLoading(TSubclassOf<UFPLoadingWidget> LoadingClass, float Duration, const FString& LoadingText);
+	UFUNCTION(Client, Reliable)
+	void ClientSetCountdownInputLock(bool bLocked);
 
 	UFUNCTION(Exec)
 	void DebugEndRound();

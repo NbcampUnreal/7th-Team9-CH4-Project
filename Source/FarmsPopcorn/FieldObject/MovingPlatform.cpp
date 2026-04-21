@@ -3,8 +3,12 @@
 AMovingPlatform::AMovingPlatform()
 {
     PrimaryActorTick.bCanEverTick = true;
+    bReplicates = true;
+    SetReplicateMovement(true);
+    
     PlatformMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlatformMesh"));
     RootComponent = PlatformMesh;
+    
 }
 
 void AMovingPlatform::BeginPlay()
@@ -19,6 +23,8 @@ void AMovingPlatform::BeginPlay()
 
 void AMovingPlatform::Tick(float DeltaTime)
 {
+    if (!HasAuthority()) return;
+        
     Super::Tick(DeltaTime);
 
     float Time = GetGameTimeSinceCreation() * MoveSpeed;

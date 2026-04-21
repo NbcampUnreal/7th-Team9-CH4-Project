@@ -7,6 +7,9 @@
 #include "Net/UnrealNetwork.h"
 #include "FPGameState.generated.h"
 
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCountdownTick, int32, RemainingSeconds);
+
 UCLASS()
 class FARMSPOPCORN_API AFPGameState : public AGameState
 {
@@ -20,9 +23,19 @@ public:
 	
 	virtual void BeginPlay() override;
 
+	FOnCountdownTick OnCountdownTick;
+
+protected:
+	UFUNCTION()
+	void OnRep_RemainingTime();
+	void TryStartRoundCountdown();
+	void SetPlayersCountdownLocked(bool bLocked);
+	FTimerHandle RoundStartCheckHandle;
+	float EarliestCountdownStartTime = 0.0f;
 #pragma endregion
 	
 #pragma region GameStart //게임 시작
+public:
 	//게임 페이즈 (UI 연출용)
 	UFUNCTION()
 	void OnRep_GamePhase();
@@ -30,6 +43,7 @@ public:
 	void HandleCountDownStarted();
 	void HandleGameStarted();
 	void HandleResultStarted();
+	void TickCountDown();
     
 	UFUNCTION()
 	void OnRep_IsReady();
@@ -38,11 +52,12 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_GamePhase, BlueprintReadOnly, Category = "FP|State")
 	EFPGamePhase GamePhase;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "FP|State")
+	UPROPERTY(ReplicatedUsing = OnRep_RemainingTime, BlueprintReadOnly, Category = "FP|State")
 	float RemainingTime; 
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "FP|State")
 	bool bAllReady = false; 
+	FTimerHandle CountDownTickHandle;
 
 #pragma endregion GameStart //게임 시작 끝
 	

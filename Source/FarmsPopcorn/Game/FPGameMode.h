@@ -20,8 +20,7 @@ public:
     virtual void BeginPlay() override;
     virtual void HandleSeamlessTravelPlayer(AController*& C) override;
     virtual void Logout(AController* Exiting) override;
-
-
+    
 #pragma region Team & Avatar // 팀 & 아바타
 public:
     void AssignCharacterToPlayer(APlayerController* PlayerController);
@@ -114,7 +113,7 @@ public:
     float ResultDisplayTime = 5.0f;
     //최대 라운드 수
     UPROPERTY(EditDefaultsOnly, Category = "Round")
-    int32 MaxRounds = 5;
+    int32 MaxRounds = 3;
     UPROPERTY(BlueprintReadOnly, Category = "Round")
     int32 CurrentRound = 1;
 private:

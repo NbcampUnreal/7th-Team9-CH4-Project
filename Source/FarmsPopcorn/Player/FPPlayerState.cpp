@@ -88,8 +88,10 @@ void AFPPlayerState::OnRep_CustomPlayerName()
 	APawn* OwningPawn =GetPawn();
 	if (IsValid(OwningPawn))
 	{
-		AFPPlayerCharacter* Player = Cast<AFPPlayerCharacter>(OwningPawn);
-		Player->CurrentName = CustomPlayerName;
+		if (AFPPlayerCharacter* Player = Cast<AFPPlayerCharacter>(OwningPawn))
+		{
+			Player->CurrentName = CustomPlayerName;
+		}
 	}
 }
 

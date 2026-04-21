@@ -54,14 +54,7 @@ void AFPFinishLine::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* 
                 GM->RedTeamScore, GM->BlueTeamScore);
 
             CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-            GetWorld()->GetTimerManager().SetTimer(
-                NextLevelHandle,
-                this,
-                &AFPFinishLine::NextMapTravel,
-                3.0f,
-                false
-            );
+            GM->EndRound();
         }
     }
 }
