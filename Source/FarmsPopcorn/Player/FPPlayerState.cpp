@@ -2,6 +2,7 @@
 #include "FPPlayerCharacter.h"
 #include "Game/FPGameInstance.h"
 #include "Game/FPGameMode.h"
+#include "Game/FPGameState.h"
 #include "Net/UnrealNetwork.h"
 
 AFPPlayerState::AFPPlayerState()
@@ -21,7 +22,6 @@ void AFPPlayerState::BeginPlay()
 			if (!AssignedCharacterClass)
 			{
 				CustomPlayerName = GI->SaveNickName;
-				TeamID = GI->SaveTeamID;
 				AssignedCharacterClass = GI->SaveCharacterClass;
 				AssignedCharacterID = GI->SaveCharacterID;
 			}
@@ -33,7 +33,6 @@ void AFPPlayerState::CopyProperties(APlayerState* PlayerState)
 {
 	Super::CopyProperties(PlayerState);
 
-	// 새 레벨에서 만들어진 PlayerState로 내 정보를 복사함
 	AFPPlayerState* NewPS = Cast<AFPPlayerState>(PlayerState);
 	if (NewPS)
 	{
@@ -42,7 +41,16 @@ void AFPPlayerState::CopyProperties(APlayerState* PlayerState)
 		NewPS->AssignedCharacterName = this->AssignedCharacterName;
 		NewPS->AssignedCharacterIcon = this->AssignedCharacterIcon;
 		NewPS->TeamID = this->TeamID;
+		NewPS->CharacterIndex = this->CharacterIndex;
 	}
+}
+
+void AFPPlayerState::ServerSetCharacterIndex_Implementation(int32 NewIndex)
+{
+	CharacterIndex = NewIndex;
+
+	UE_LOG(LogTemp, Warning, TEXT("ServerSetCharacterIndex: %s -> %d"),
+		*GetPlayerName(), CharacterIndex);
 }
 
 void AFPPlayerState::Server_SetReady_Implementation(bool bNewReadyState)

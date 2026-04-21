@@ -1,8 +1,20 @@
 ﻿#pragma once
-
+#include "Player/FPPlayerState.h"
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "FPLobbyWidget.generated.h"
+
+
+class UButton;
+class UTextBlock;
+class UVerticalBox;
+class UHorizontalBox;
+class UTexture2D;
+class UImage;
+class UFPPlayerSlotWidget;
+class UFPPlayerListEntryWidget;
+class UFPLobbyCenterSlotWidget;
+class AFPPlayerState;
 
 UCLASS()
 class FARMSPOPCORN_API UFPLobbyWidget : public UUserWidget
@@ -24,6 +36,10 @@ public:
 	//준비상태 변경시 호출
 	UFUNCTION(BlueprintCallable)
 	void OnPlayerReadyChanged(const FString& PlayerName, bool bNewReadyState);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lobby")
+	int32 CurrentPreviewIndex = 0;
+
+
 protected:
 	//닉네임 표시
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -45,6 +61,29 @@ protected:
 	class UVerticalBox* BlueTeamListBox;
 	UPROPERTY(meta = (BindWidget))
 	class UVerticalBox* RedTeamListBox;
+	UPROPERTY(meta = (BindWidget))
+	class UImage* ImgCharPreview;
+
+	UPROPERTY(meta = (BindWidget))
+	class UFPLobbyCenterSlotWidget* CenterSlot_Blue_0;
+
+	UPROPERTY(meta = (BindWidget))
+	class UFPLobbyCenterSlotWidget* CenterSlot_Blue_1;
+
+	UPROPERTY(meta = (BindWidget))
+	class UFPLobbyCenterSlotWidget* CenterSlot_Blue_2;
+
+	UPROPERTY(meta = (BindWidget))
+	class UFPLobbyCenterSlotWidget* CenterSlot_Red_0;
+
+	UPROPERTY(meta = (BindWidget))
+	class UFPLobbyCenterSlotWidget* CenterSlot_Red_1;
+
+	UPROPERTY(meta = (BindWidget))
+	class UFPLobbyCenterSlotWidget* CenterSlot_Red_2;
+
+
+
 	//슬롯 위젯
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<class UFPPlayerSlotWidget> PlayerSlotWidgetClass;
@@ -56,12 +95,29 @@ protected:
 	TArray<class UTexture2D*> CharacterImages;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
 	class UTexture2D* DefaultIcon;
+	UPROPERTY(meta = (BindWidget))
+	class UButton* Btn_Prev;
+	UPROPERTY(meta = (BindWidget))
+	class UButton* Btn_Next;
+
 
 	//준비 버튼 클릭
 	UFUNCTION()
 	void OnReadyClicked();
 	//준비 상태에 따라 UI 업데이트
 	void UpdateReadyStatus(bool bNewReadyState);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Lobby")
+	void OnClickNextCharacter();
+	UFUNCTION(BlueprintImplementableEvent, Category = "Lobby")
+	void OnClickPrevCharacter();
+	UFUNCTION(BlueprintCallable, Category = "Lobby")
+	int32 GetAvailableIndex(int32 CurrentIdx, bool bForward);
+
+
+	UFUNCTION()
+	void HandleNextClicked();
+	UFUNCTION()
+	void HandlePrevClicked();
 
 private:
 	bool bIsReady = false; //현재 레디 상태
@@ -78,4 +134,5 @@ private:
 	//타이머에서 호출
 	UFUNCTION()
 	void CheckPlayerArray();
+	void UpdateCenterSlots(const TArray<AFPPlayerState*>& BlueTeamPlayers, const TArray<AFPPlayerState*>& RedTeamPlayers);
 };

@@ -83,9 +83,6 @@ void AFPGameState::OnRep_IsReady()
 {
 	
 }
-
-
-
 void AFPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -97,4 +94,6 @@ void AFPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AFPGameState, RedTotalScore);
 	DOREPLIFETIME(AFPGameState, BlueTotalScore);
 	DOREPLIFETIME(AFPGameState, CurrentRound);
+	DOREPLIFETIME(AFPGameState, OccupiedIndices);
 }
+

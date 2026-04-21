@@ -88,13 +88,31 @@ public:
 	// 블루프린트에서 위젯 클래스 지정
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> RoundResultWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> LobbyWidgetClass;
+
+	UPROPERTY()
+	UUserWidget* LobbyWidgetInstance = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> CreateNameWidgetClass;
+
+	UPROPERTY()
+	UUserWidget* CreateNameWidgetInstance = nullptr;
+
+
 	//UI버튼에서 호출할 버튼
 	UFUNCTION(BlueprintCallable, Category = "FP|Team")
 	void RequestChangeTeam();
 	//서버에서 실행될 함수
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerRequestChangeTeam();
+	UFUNCTION(Server, Reliable)
+	void ServerAssignRandomCharacterIndex();
 
+	void CreateLobbyWidgetIfNeeded();
+	void CreateNameWidgetIfNeeded();
 	
 	UFUNCTION(Client, Reliable)
 	void Client_SaveCharacterToInstance(FName CharID, TSubclassOf<APawn> CharClass);
@@ -107,6 +125,11 @@ public:
 	//위젯이 읽어갈 채팅
 	UPROPERTY()
 	TArray<FPendingChatMessage> PendingMessages;
+	//캐릭터 변경 요청
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Lobby")
+	void ServerRequestCharacterUpdate(int32 NewIndex);
+
+	int32 MyCurrentOccupiedIndex = -1;
 
 private:
 	UPROPERTY()
