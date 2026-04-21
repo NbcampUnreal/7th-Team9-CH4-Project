@@ -15,8 +15,6 @@ AFPGameState::AFPGameState()
 
 }
 
-
-
 void AFPGameState::BeginPlay()
 {
 	Super::BeginPlay();
@@ -78,7 +76,6 @@ void AFPGameState::SetGamePhase(EFPGamePhase NewPhase)
 	}
 }
 
-
 void AFPGameState::HandleCountDownStarted()
 {
 	if (!HasAuthority())
@@ -126,7 +123,6 @@ void AFPGameState::HandleResultStarted()
 		FPPC->ClientShowRoundResult();
 	}
 }
-
 
 void AFPGameState::OnRep_IsReady()
 {
@@ -213,8 +209,6 @@ void AFPGameState::SetPlayersCountdownLocked(bool bLocked)
 	}
 }
 
-
-
 void AFPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -226,4 +220,6 @@ void AFPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AFPGameState, RedTotalScore);
 	DOREPLIFETIME(AFPGameState, BlueTotalScore);
 	DOREPLIFETIME(AFPGameState, CurrentRound);
+	DOREPLIFETIME(AFPGameState, OccupiedIndices);
 }
+

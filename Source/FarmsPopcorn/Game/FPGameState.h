@@ -4,6 +4,7 @@
 #include "GameFramework/GameState.h"
 #include "Player/FPPlayerController.h"
 #include "Core/FPTeamID.h"
+#include "Net/UnrealNetwork.h"
 #include "FPGameState.generated.h"
 
 
@@ -80,7 +81,11 @@ public:
 	int32 CurrentRound = 1;
 #pragma endregion GameState
 	
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	UPROPERTY(Replicated)
-	int32 CharacterIndex = 0;
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Lobby")
+	TArray<int32> OccupiedIndices;
+	void UpdateOccupiedIndex(int32 OldIndex, int32 NewIndex);
+
+
 };

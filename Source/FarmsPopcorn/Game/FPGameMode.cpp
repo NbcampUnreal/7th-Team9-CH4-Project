@@ -36,7 +36,7 @@ void AFPGameMode::PostLogin(APlayerController* NewPlayer)
 	{
 		CheckPlayerAvater();
 	}
-	AssignCharacterToPlayer(NewPlayer);
+
 	AssignTeam(NewPlayer);
 	Super::PostLogin(NewPlayer);
 }
@@ -102,6 +102,23 @@ void AFPGameMode::HandleSeamlessTravelPlayer(AController*& C)
 	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("✓ Player initialized after seamless travel"));
+}
+
+void AFPGameMode::Logout(AController* Exiting)
+{
+	if (AFPPlayerController* FPC = Cast<AFPPlayerController>(Exiting))
+	{
+		AFPGameState* GS = GetGameState<AFPGameState>();
+		AFPPlayerState* PS = FPC->GetPlayerState<AFPPlayerState>();
+
+		if (GS && PS)
+		{
+			GS->OccupiedIndices.Remove(PS->CharacterIndex);
+			FPC->MyCurrentOccupiedIndex = -1;
+		}
+	}
+
+	Super::Logout(Exiting);
 }
 
 //아바타 데이터테이블 정보확인
@@ -215,6 +232,46 @@ void AFPGameMode::AssignCharacterToPlayer(APlayerController* PlayerController)
 	{
 		UE_LOG(LogTemp, Error, TEXT("AssignCharacterToPlayer: 유효하지 않은 인덱스 %d (배열 크기: %d)"),
 			RandomIndex, AvatarClasses.Num());
+	}
+}
+
+void AFPGameMode::ApplyCharacterSelectionFromIndex(AFPPlayerState* FPPlayerState, int32 CharacterIndex)
+{
+	if (!FPPlayerState || !CharacterDataTable)
+	{
+		return;
+	}
+
+	TArray<FName> RowNames = CharacterDataTable->GetRowNames();
+	if (!RowNames.IsValidIndex(CharacterIndex))
+	{
+		return;
+	}
+
+	const FName RowName = RowNames[CharacterIndex];
+	FFPCharacterDataRow* RowData = CharacterDataTable->FindRow<FFPCharacterDataRow>(RowName, TEXT("ApplyCharacterSelectionFromIndex"));
+	if (!RowData)
+	{
+		return;
+	}
+
+	TSubclassOf<APawn> SelectedClass = RowData->CharacterAsset.LoadSynchronous();
+	if (!SelectedClass)
+	{
+		return;
+	}
+
+	FPPlayerState->AssignedCharacterID = RowName;
+	FPPlayerState->AssignedCharacterClass = SelectedClass;
+	FPPlayerState->AssignedCharacterName = RowData->CharacterName;
+	FPPlayerState->AssignedCharacterIcon = RowData->CharacterIcon;
+
+	if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
+	{
+		GI->SaveCharacterID = RowName;
+		GI->SaveCharacterClass = SelectedClass;
+		GI->SaveCharacterName = RowData->CharacterName;
+		GI->SaveCharacterIcon = RowData->CharacterIcon;
 	}
 }
 
@@ -513,6 +570,13 @@ void AFPGameMode::CheckPlayerAvater()
 				AvatarClasses.Add(LoadedClass);
 			}
 		}
+	}
+}
+
+int32 AFPGameMode::GetCharacterCount() const
+{
+	{
+		return AvatarClasses.Num();
 	}
 }
 

@@ -11,9 +11,9 @@ void UFPPlayerListEntryWidget::SetPlayerInfo(const FString& InName, bool bIsRead
 	//초기 준비상태 설정
 	UpdateReadyState(bIsReady);
 	//아이콘 설정
-	if (PlayerIcon && IconTexture)
+	if (MySlotIcon && IconTexture)
 	{
-		PlayerIcon->SetBrushFromTexture(IconTexture);
+		MySlotIcon->SetBrushFromTexture(IconTexture);
 	}
 }
 

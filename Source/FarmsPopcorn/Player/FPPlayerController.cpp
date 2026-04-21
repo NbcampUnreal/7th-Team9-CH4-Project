@@ -2,6 +2,8 @@
 #include "Blueprint/UserWidget.h"
 #include "UI/FPResultWidget.h"
 #include "UI/FPUIManagerSubsystem.h"
+#include "UI/FPLobbyWidget.h"
+
 #include "FPPlayerState.h"
 #include "Game/FPGameMode.h"
 #include "Engine/World.h"
@@ -18,6 +20,9 @@ void AFPPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	CreateNameWidgetIfNeeded();
+	CreateLobbyWidgetIfNeeded();
+
 	if (IsLocalController())
 	{
 		UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
@@ -28,6 +33,10 @@ void AFPPlayerController::BeginPlay()
 		}
 		FString MapName = GetWorld()->GetMapName();
 		bool bIsMenuMap = MapName.Contains(TEXT("Login")) || MapName.Contains(TEXT("Lobby")) || MapName.Contains(TEXT("Create")) || MapName.Contains(TEXT("Result"));
+		if (MapName.Contains(TEXT("Lobby")))
+		{
+			ServerAssignRandomCharacterIndex();
+		}
 		if (!bIsMenuMap)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("인게임 맵 진입 확인 (%s): UI 복구를 시도합니다."), *MapName);
@@ -42,8 +51,6 @@ void AFPPlayerController::BeginPlay()
 
 void AFPPlayerController::BeginPlayingState()
 {
-	Super::BeginPlayingState();
-	ApplyGameplayInputMode();
 	if (IsLocalController())
 	{
 		FString MapName = GetWorld()->GetMapName();
@@ -52,6 +59,25 @@ void AFPPlayerController::BeginPlayingState()
 			MapName.Contains(TEXT("Lobby")) ||
 			MapName.Contains(TEXT("Create")) ||
 			MapName.Contains(TEXT("Result"));
+
+		if (bIsMenuMap)
+		{
+			bShowMouseCursor = true;
+			return;
+		}
+	}
+
+	ApplyGameplayInputMode();
+
+	if (IsLocalController())
+	{
+		FString MapName = GetWorld()->GetMapName();
+		bool bIsMenuMap =
+			MapName.Contains(TEXT("Login")) ||
+			MapName.Contains(TEXT("Lobby")) ||
+			MapName.Contains(TEXT("Create")) ||
+			MapName.Contains(TEXT("Result"));
+
 		if (!bIsMenuMap)
 		{
 			CheckGameStateAndCreateUI();
@@ -59,6 +85,67 @@ void AFPPlayerController::BeginPlayingState()
 	}
 }
 
+void AFPPlayerController::ServerRequestCharacterUpdate_Implementation(int32 NewIndex)
+{
+	AFPGameState* GS = Cast<AFPGameState>(GetWorld()->GetGameState());
+	AFPPlayerState* PS = GetPlayerState<AFPPlayerState>();
+	if (!GS || !PS)
+	{
+		return;
+	}
+
+	AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode());
+	if (!GM)
+	{
+		return;
+	}
+
+	const int32 MaxCharacterCount = GM->GetCharacterCount();
+
+	if (NewIndex < 0 || NewIndex >= MaxCharacterCount)
+	{
+		return;
+	}
+
+	if (MyCurrentOccupiedIndex != -1)
+	{
+		GS->OccupiedIndices.Remove(MyCurrentOccupiedIndex);
+	}
+
+	int32 FinalIndex = NewIndex;
+
+	if (GS->OccupiedIndices.Contains(FinalIndex))
+	{
+		bool bFound = false;
+
+		for (int32 i = 0; i < MaxCharacterCount; ++i)
+		{
+			int32 CandidateIndex = (NewIndex + i + 1) % MaxCharacterCount;
+			if (!GS->OccupiedIndices.Contains(CandidateIndex))
+			{
+				FinalIndex = CandidateIndex;
+				bFound = true;
+				break;
+			}
+		}
+
+		if (!bFound)
+		{
+			if (MyCurrentOccupiedIndex != -1)
+			{
+				GS->OccupiedIndices.AddUnique(MyCurrentOccupiedIndex);
+			}
+			return;
+		}
+	}
+
+	GS->OccupiedIndices.AddUnique(FinalIndex);
+	MyCurrentOccupiedIndex = FinalIndex;
+	PS->CharacterIndex = FinalIndex;
+
+	UE_LOG(LogTemp, Warning, TEXT("최종 캐릭터 인덱스 적용: %s -> %d"),
+		*PS->GetPlayerName(), FinalIndex);
+}
 void AFPPlayerController::PostSeamlessTravel()
 {
 
@@ -322,6 +409,150 @@ void AFPPlayerController::DebugEndRound()
 void AFPPlayerController::RequestChangeTeam()
 {
 	ServerRequestChangeTeam();
+}
+void AFPPlayerController::ServerAssignRandomCharacterIndex_Implementation()
+{
+	AFPGameState* GS = GetWorld() ? GetWorld()->GetGameState<AFPGameState>() : nullptr;
+	AFPPlayerState* PS = GetPlayerState<AFPPlayerState>();
+	if (!GS || !PS)
+	{
+		return;
+	}
+
+	if (MyCurrentOccupiedIndex != -1)
+	{
+		return;
+	}
+
+	AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode());
+	if (!GM)
+	{
+		return;
+	}
+
+	const int32 MaxCharacterCount = GM->GetCharacterCount();
+
+	TArray<int32> AvailableIndices;
+	for (int32 i = 0; i < MaxCharacterCount; ++i)
+	{
+		if (!GS->OccupiedIndices.Contains(i))
+		{
+			AvailableIndices.Add(i);
+		}
+	}
+
+	if (AvailableIndices.Num() <= 0)
+	{
+		return;
+	}
+
+	const int32 RandomArrayIndex = FMath::RandRange(0, AvailableIndices.Num() - 1);
+	const int32 ChosenIndex = AvailableIndices[RandomArrayIndex];
+
+	ServerRequestCharacterUpdate(ChosenIndex);
+}
+void AFPPlayerController::CreateLobbyWidgetIfNeeded()
+{
+	UE_LOG(LogTemp, Warning, TEXT("CreateLobbyWidgetIfNeeded called"));
+
+	if (!IsLocalController())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Not local controller"));
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("World is null"));
+		return;
+	}
+
+	const FString MapName = World->GetMapName();
+	UE_LOG(LogTemp, Warning, TEXT("Current MapName: %s"), *MapName);
+
+	const bool bIsLobbyMap = MapName.Contains(TEXT("Lobby"));
+	if (!bIsLobbyMap)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Not lobby map"));
+		return;
+	}
+
+	if (LobbyWidgetInstance && LobbyWidgetInstance->IsInViewport())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Lobby widget already exists"));
+		return;
+	}
+
+	if (!LobbyWidgetClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("LobbyWidgetClass is null"));
+		return;
+	}
+
+	LobbyWidgetInstance = CreateWidget<UUserWidget>(this, LobbyWidgetClass);
+	if (!LobbyWidgetInstance)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CreateWidget failed"));
+		return;
+	}
+
+	LobbyWidgetInstance->AddToViewport();
+	UE_LOG(LogTemp, Warning, TEXT("Lobby widget added to viewport"));
+
+	FInputModeUIOnly InputMode;
+	InputMode.SetWidgetToFocus(LobbyWidgetInstance->TakeWidget());
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
+
+	UE_LOG(LogTemp, Warning, TEXT("로비 UI 입력 모드 설정 완료, 마우스 커서 표시"));
+}
+void AFPPlayerController::CreateNameWidgetIfNeeded()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const FString MapName = World->GetMapName();
+	const bool bIsCreateMap = MapName.Contains(TEXT("Create"));
+
+	if (!bIsCreateMap)
+	{
+		return;
+	}
+
+	if (CreateNameWidgetInstance && CreateNameWidgetInstance->IsInViewport())
+	{
+		return;
+	}
+
+	if (!CreateNameWidgetClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CreateNameWidgetClass is null"));
+		return;
+	}
+
+	CreateNameWidgetInstance = CreateWidget<UUserWidget>(this, CreateNameWidgetClass);
+	if (!CreateNameWidgetInstance)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Failed to create CreateNameWidget"));
+		return;
+	}
+
+	CreateNameWidgetInstance->AddToViewport();
+
+	FInputModeUIOnly InputMode;
+	InputMode.SetWidgetToFocus(CreateNameWidgetInstance->TakeWidget());
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
 }
 bool AFPPlayerController::ServerRequestChangeTeam_Validate() { return true; }
 

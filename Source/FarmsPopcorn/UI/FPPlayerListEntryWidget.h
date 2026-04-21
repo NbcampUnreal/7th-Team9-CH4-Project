@@ -28,5 +28,5 @@ protected:
 	class UTextBlock* ReadyStateText;
 	//플레이어 아이콘
 	UPROPERTY(meta = (BindWidget))
-	class UImage* PlayerIcon;
+	class UImage* MySlotIcon;
 };

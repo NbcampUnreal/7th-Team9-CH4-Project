@@ -19,11 +19,12 @@ public:
     virtual void PostLogin(APlayerController* NewPlayer) override;
     virtual void BeginPlay() override;
     virtual void HandleSeamlessTravelPlayer(AController*& C) override;
+    virtual void Logout(AController* Exiting) override;
     
 #pragma region Team & Avatar // 팀 & 아바타
 public:
     void AssignCharacterToPlayer(APlayerController* PlayerController);
-    
+    void ApplyCharacterSelectionFromIndex(class AFPPlayerState* FPPlayerState, int32 CharacterIndex);
     // 플레이어에게 팀을 배정함
     void AssignTeam(AController* Player);
     
@@ -53,6 +54,7 @@ public:
     
     int32 RedTeamCount = 0;
     int32 BlueTeamCount = 0;
+    int32 GetCharacterCount() const;
     
 protected:
     

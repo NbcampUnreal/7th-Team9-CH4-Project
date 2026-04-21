@@ -23,6 +23,9 @@ public:
 	
 	UPROPERTY(BlueprintReadWrite, Replicated, Category = "PlayerState")
 	bool bIsReady = false;	
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetCharacterIndex(int32 NewIndex);
 private:
 	FTimerHandle ReadyCheckDelayHandle;
 	
