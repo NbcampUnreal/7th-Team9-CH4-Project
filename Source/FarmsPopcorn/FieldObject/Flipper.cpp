@@ -2,6 +2,7 @@
 
 #include "FieldObject/Flipper.h"
 #include "GameFramework/Character.h"
+#include "Net/UnrealNetwork.h"
 
 AFlipper::AFlipper()
 {
@@ -33,12 +34,11 @@ void AFlipper::Tick(float DeltaTime)
     Super::Tick(DeltaTime);
     
     //서버만 실행하고, 클라이언트는 실행 안시킴
-    /*if (!HasAuthority())
+    if (HasAuthority())
     {
-        return;
-    }*/
-
-    ElapsedTime += DeltaTime;
+        ElapsedTime += DeltaTime;
+    }
+    
     float CycleTime = FMath::Fmod(ElapsedTime, CycleInterval);
     float Alpha = 0.0f;
 
@@ -58,6 +58,12 @@ void AFlipper::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPri
 void AFlipper::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
     LaunchTarget(OtherActor);
+}
+
+void AFlipper::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(AFlipper, ElapsedTime);
 }
 
 void AFlipper::LaunchTarget(AActor* OtherActor)
