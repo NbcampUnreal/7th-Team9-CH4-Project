@@ -46,6 +46,7 @@ protected:
     bool bAutoSizeToMesh;
 
     // 최종 간격
+    UPROPERTY(Replicated)
     float FinalInterval;
 
     // 블록 한 칸의 크기 조절
@@ -60,8 +61,18 @@ protected:
     UPROPERTY(EditAnywhere, Category = "TipToe Settings")
     TSubclassOf<class AFakeTile> FakeTileClass;
 
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_SpawnFakeTiles(float InFinalInterval);
+    
+    UPROPERTY(ReplicatedUsing = OnRep_GridData)
     TArray<bool> GridData;
-
+    
+    UFUNCTION()
+    void OnRep_GridData();
+    
     void GenerateMaze();
     int32 GetIndex(int32 X, int32 Y) const;
+    
+    void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 };
+
