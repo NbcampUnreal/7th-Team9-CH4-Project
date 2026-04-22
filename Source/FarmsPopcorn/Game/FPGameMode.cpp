@@ -712,7 +712,7 @@ void AFPGameMode::StartNextRound()
 		const FString FinalMapPath = GetFinalResultMapPath();
 		FTimerDelegate FinalTravelDelegate = FTimerDelegate::CreateLambda([this, FinalMapPath]()
 		{
-			GetWorld()->ServerTravel(FinalMapPath + TEXT("?listen"), true);
+			GetWorld()->ServerTravel(FinalMapPath, true);
 		});
 		GetWorldTimerManager().SetTimer(RoundResultTimerHandle, FinalTravelDelegate, 2.0f, false);
 

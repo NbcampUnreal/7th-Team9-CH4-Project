@@ -175,7 +175,7 @@ void UFPLoadingWidget::CompleteLoading()
 
 void UFPLoadingWidget::OnIntroLoadingComplete()
 {
-    UE_LOG(LogTemp, Warning, TEXT("✓ Intro Loading Complete - Moving to next level"));
+    /*UE_LOG(LogTemp, Warning, TEXT("✓ Intro Loading Complete - Moving to next level"));
 
     // 외부 주입 경로 우선 사용
     FString LevelPath = OverrideLevelPath;
@@ -206,6 +206,17 @@ void UFPLoadingWidget::OnIntroLoadingComplete()
         }
 
         World->ServerTravel(LevelPath + TEXT("?listen"), true);
+    }*/
+    UE_LOG(LogTemp, Warning, TEXT("✓ Intro Loading Complete - Connecting to Dedicated Server..."));
+
+    // 3초를 세면 함수가 실행되며 서버
+    APlayerController* PC = GetOwningPlayer();
+    if (!PC) PC = GetWorld()->GetFirstPlayerController();
+    
+    if (PC)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("🚀 로딩 끝! 데디케이티드 서버로 이동 (ClientTravel)"));
+        PC->ClientTravel(TEXT("220.77.247.47:7777"), ETravelType::TRAVEL_Absolute);
     }
 }
 

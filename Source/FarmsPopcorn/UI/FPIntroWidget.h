@@ -25,6 +25,7 @@ public:
     virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
  
 protected:
+    
     // ===== 영상 관련 =====
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Intro|Video")
     UMediaPlayer* MediaPlayer = nullptr;

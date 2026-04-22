@@ -54,6 +54,12 @@ void UFPCreatenameWidget::NativeConstruct()
 	}
 }
 
+void UFPCreatenameWidget::NativeDestruct()
+{
+	Super::NativeDestruct();
+	
+}
+
 void UFPCreatenameWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);

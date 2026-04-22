@@ -1,14 +1,12 @@
 ﻿#pragma once
 
+#if WITH_EDITOR
 #include "CoreMinimal.h"
 #include "Editor/UnrealEdEngine.h"
-#include "UPEdEngine.generated.h"
 
-
-UCLASS()
-class GITSTATUSBRANCH_API UUPEdEngine : public UUnrealEdEngine
+class UUPEdEngine : public UUnrealEdEngine
 {
-	GENERATED_BODY()
-	
+public:
 	virtual void Init(IEngineLoop* InEngineLoop) override;
 };
+#endif
