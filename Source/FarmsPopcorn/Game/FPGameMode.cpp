@@ -561,7 +561,7 @@ void AFPGameMode::ExecuteMapTravel()
 
 	UE_LOG(LogTemp, Warning, TEXT("서버 트래블 시도 중: %s"), *LevelPath);
 	
-	GetWorld()->ServerTravel(LevelPath + TEXT("?listen"), true);
+	GetWorld()->ServerTravel(LevelPath, true);
 }
 
 void AFPGameMode::ResetAvatarSelection()
