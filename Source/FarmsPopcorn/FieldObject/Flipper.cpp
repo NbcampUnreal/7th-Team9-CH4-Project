@@ -1,4 +1,6 @@
-﻿#include "FieldObject/Flipper.h"
+﻿// Flipper.cpp
+
+#include "FieldObject/Flipper.h"
 #include "GameFramework/Character.h"
 
 AFlipper::AFlipper()
@@ -10,8 +12,11 @@ AFlipper::AFlipper()
     SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
     RootComponent = SceneRoot;
 
+    PivotScene = CreateDefaultSubobject<USceneComponent>(TEXT("PivotScene"));
+    PivotScene->SetupAttachment(SceneRoot);
+
     FlipperMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FlipperMesh"));
-    FlipperMesh->SetupAttachment(SceneRoot);
+    FlipperMesh->SetupAttachment(PivotScene);
 
     // 모서리 통과 방지를 위한 물리 설정
     FlipperMesh->SetCollisionProfileName(TEXT("BlockAll"));
@@ -28,10 +33,10 @@ void AFlipper::Tick(float DeltaTime)
     Super::Tick(DeltaTime);
     
     //서버만 실행하고, 클라이언트는 실행 안시킴
-    if (!HasAuthority())
+    /*if (!HasAuthority())
     {
         return;
-    }
+    }*/
 
     ElapsedTime += DeltaTime;
     float CycleTime = FMath::Fmod(ElapsedTime, CycleInterval);
@@ -40,8 +45,9 @@ void AFlipper::Tick(float DeltaTime)
     if (CycleTime < OutSpeed) Alpha = CycleTime / OutSpeed;
     else if (CycleTime < OutSpeed + StayTime) Alpha = 1.0f;
     else if (CycleTime < OutSpeed + StayTime + InSpeed) Alpha = 1.0f - ((CycleTime - (OutSpeed + StayTime)) / InSpeed);
-
-    SceneRoot->SetRelativeRotation(FRotator(0, 0, Alpha * MaxRotationAngle));
+  
+    FQuat TargetRotation = FQuat(RotationAxis.GetSafeNormal(), FMath::DegreesToRadians(Alpha * MaxRotationAngle));
+    PivotScene->SetRelativeRotation(TargetRotation);
 }
 
 void AFlipper::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)

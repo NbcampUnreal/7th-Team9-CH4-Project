@@ -1,36 +1,37 @@
 ﻿#include "MovingPlatform.h"
+#include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
 
 AMovingPlatform::AMovingPlatform()
 {
     PrimaryActorTick.bCanEverTick = true;
-    bReplicates = true;
-    SetReplicateMovement(true);
-    
+
+    RootScene = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+    RootComponent = RootScene;
+
     PlatformMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlatformMesh"));
-    RootComponent = PlatformMesh;
-    
+    PlatformMesh->SetupAttachment(RootScene);
 }
 
 void AMovingPlatform::BeginPlay()
 {
     Super::BeginPlay();
 
-    // 시작 위치 저장
-    StartLocation = GetActorLocation();
-    // 목표 위치 = 시작 위치 + 에디터에서 설정한 오프셋
-    TargetLocation = StartLocation + TargetOffset;
+    StartPos = PlatformMesh->GetRelativeLocation();
+    TargetPos = StartPos + FVector(0.0f, 0.0f, MaxHeight);
 }
 
 void AMovingPlatform::Tick(float DeltaTime)
 {
-    if (!HasAuthority()) return;
-        
     Super::Tick(DeltaTime);
 
-    float Time = GetGameTimeSinceCreation() * MoveSpeed;
+    FVector CurrentPos = PlatformMesh->GetRelativeLocation();
+    FVector Target = bIsActivated ? TargetPos : StartPos;
 
-    float Alpha = (FMath::Sin(Time) * 0.5f) + 0.5f;
+    PlatformMesh->SetRelativeLocation(FMath::VInterpTo(CurrentPos, Target, DeltaTime, LerpSpeed));
+}
 
-    FVector CurrentLocation = FMath::Lerp(StartLocation, TargetLocation, Alpha);
-    SetActorLocation(CurrentLocation);
+void AMovingPlatform::SetPlatformActive(bool bActive)
+{
+    bIsActivated = bActive;
 }
