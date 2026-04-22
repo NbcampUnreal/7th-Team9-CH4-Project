@@ -81,6 +81,10 @@ public:
 	void ClientShowPostTravelLoading(TSubclassOf<UFPLoadingWidget> LoadingClass, float Duration, const FString& LoadingText);
 	UFUNCTION(Client, Reliable)
 	void ClientSetCountdownInputLock(bool bLocked);
+	
+	UFUNCTION(Client, Reliable)
+	void ClientSyncCharacterSelection(int32 ConfirmedIndex);
+
 
 	UFUNCTION(Exec)
 	void DebugEndRound();

@@ -216,6 +216,7 @@ public:
     // 선택된 캐릭터 인덱스 설정 (0~10)
     UFUNCTION(Server, Reliable)
     void Server_SetCharacterIndex(int32 InIndex);
+    virtual void OnRep_PlayerState() override;
 
 protected:
     // 캐릭터 인덱스 (서버→클라 동기화)
@@ -233,6 +234,8 @@ protected:
     //각 캐릭터 인덱스에 대응하는 애니메이션 블루프린트 클래스 배열
     UPROPERTY(EditDefaultsOnly, Category = "PR|Character")
     TArray<TSubclassOf<UAnimInstance>> CharacterAnimClassArray;
+private:
+    void SyncCharacterVisualFromPlayerState();
 
 #pragma endregion
 

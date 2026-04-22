@@ -8,6 +8,8 @@
 
 class AFPPlayerState;
 class UFPLoadingWidget;
+class UFPCharacterDefinition;
+
 UCLASS()
 class FARMSPOPCORN_API AFPGameMode : public AGameMode
 {
@@ -42,6 +44,9 @@ public:
     // 게임 중 선택된 캐릭터들을 기록 (중복 방지용)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character Data")
     TArray<FName> UsedCharacterIDs;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character Data")
+    TArray<TObjectPtr<UFPCharacterDefinition>> CharacterDefinitions;
     
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Data")
     UDataTable* CharacterDataTable;

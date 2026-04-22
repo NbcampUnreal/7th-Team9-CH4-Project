@@ -17,6 +17,26 @@
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework//PlayerState.h"
 #include "FPUIManagerSubsystem.h"
+#include "FPCharacterDefinition.h"
+
+namespace
+{
+	UTexture2D* GetCharacterIcon(const TArray<TObjectPtr<UFPCharacterDefinition>>& CharacterDefinitions, int32 Index)
+	{
+		if (!CharacterDefinitions.IsValidIndex(Index))
+		{
+			return nullptr;
+		}
+
+		UFPCharacterDefinition* Definition = CharacterDefinitions[Index];
+		if (!Definition)
+		{
+			return nullptr;
+		}
+
+		return Definition->CharacterIcon.LoadSynchronous();
+	}
+}
 
 void UFPLobbyWidget::NativeConstruct()
 {
@@ -86,30 +106,38 @@ void UFPLobbyWidget::NativeConstruct()
 			CurrentPreviewIndex = InitPS->CharacterIndex;
 		}
 
-		if (ImgCharPreview && CharacterImages.IsValidIndex(CurrentPreviewIndex))
+		if (ImgCharPreview)
 		{
-			ImgCharPreview->SetBrushFromTexture(CharacterImages[CurrentPreviewIndex]);
+			if (UTexture2D* Icon = GetCharacterIcon(CharacterDefinitions, CurrentPreviewIndex))
+			{
+				ImgCharPreview->SetBrushFromTexture(Icon);
+			}
 		}
 	}
 
 }
 int32 UFPLobbyWidget::GetAvailableIndex(int32 CurrentIdx, bool bForward)
 {
-	int32 MaxCount = CharacterImages.Num();
+	int32 MaxCount = CharacterDefinitions.Num();
 	if (MaxCount <= 0) return 0;
 
 	AFPGameState* MyGS = Cast<AFPGameState>(UGameplayStatics::GetGameState(GetWorld()));
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	AFPPlayerState* LocalPS = PC ? PC->GetPlayerState<AFPPlayerState>() : nullptr;
+
 	if (!MyGS) return CurrentIdx;
 
 	int32 NextIdx = CurrentIdx;
 	for (int32 i = 0; i < MaxCount; i++)
 	{
-		if (bForward)
-			NextIdx = (NextIdx + 1) % MaxCount;
-		else
-			NextIdx = (NextIdx - 1 + MaxCount) % MaxCount;
+		NextIdx = bForward
+			? (NextIdx + 1) % MaxCount
+			: (NextIdx - 1 + MaxCount) % MaxCount;
 
-		if (!MyGS->OccupiedIndices.Contains(NextIdx))
+		const bool bIsMine = LocalPS && LocalPS->CharacterIndex == NextIdx;
+		const bool bOccupied = MyGS->OccupiedIndices.Contains(NextIdx);
+
+		if (!bOccupied || bIsMine)
 		{
 			return NextIdx;
 		}
@@ -122,9 +150,12 @@ void UFPLobbyWidget::HandleNextClicked()
 	int32 NewIndex = GetAvailableIndex(CurrentPreviewIndex, true);
 	CurrentPreviewIndex = NewIndex;
 
-	if (ImgCharPreview && CharacterImages.IsValidIndex(CurrentPreviewIndex))
+	if (ImgCharPreview)
 	{
-		ImgCharPreview->SetBrushFromTexture(CharacterImages[CurrentPreviewIndex]);
+		if (UTexture2D* Icon = GetCharacterIcon(CharacterDefinitions, CurrentPreviewIndex))
+		{
+			ImgCharPreview->SetBrushFromTexture(Icon);
+		}
 	}
 
 	APlayerController* PC = GetWorld()->GetFirstPlayerController();
@@ -304,9 +335,12 @@ void UFPLobbyWidget::CheckPlayerArray()
 			if (NewEntry)
 			{
 				UTexture2D* SelectedIcon = DefaultIcon;
-				if (FPS && CharacterImages.IsValidIndex(FPS->CharacterIndex))
+				if (FPS)
 				{
-					SelectedIcon = CharacterImages[FPS->CharacterIndex];
+					if (UTexture2D* Icon = GetCharacterIcon(CharacterDefinitions, FPS->CharacterIndex))
+					{
+						SelectedIcon = Icon;
+					}
 				}
 
 				NewEntry->SetPlayerInfo(Name, FPS ? FPS->bIsReady : false, SelectedIcon);
@@ -349,9 +383,12 @@ void UFPLobbyWidget::CheckPlayerArray()
 		{
 			CurrentPreviewIndex = LocalPS->CharacterIndex;
 
-			if (ImgCharPreview && CharacterImages.IsValidIndex(CurrentPreviewIndex))
+			if (ImgCharPreview)
 			{
-				ImgCharPreview->SetBrushFromTexture(CharacterImages[CurrentPreviewIndex]);
+				if (UTexture2D* Icon = GetCharacterIcon(CharacterDefinitions, CurrentPreviewIndex))
+				{
+					ImgCharPreview->SetBrushFromTexture(Icon);
+				}
 			}
 		}
 	}
@@ -375,11 +412,10 @@ void UFPLobbyWidget::UpdateCenterSlots(const TArray<AFPPlayerState*>& BlueTeamPl
 			}
 
 			UTexture2D* Icon = DefaultIcon;
-			if (CharacterImages.IsValidIndex(PS->CharacterIndex))
+			if (UTexture2D* CharacterIcon = GetCharacterIcon(CharacterDefinitions, PS->CharacterIndex))
 			{
-				Icon = CharacterImages[PS->CharacterIndex];
+				Icon = CharacterIcon;
 			}
-
 			const FString DisplayName = !PS->CustomPlayerName.IsEmpty()
 				? PS->CustomPlayerName
 				: PS->GetPlayerName();

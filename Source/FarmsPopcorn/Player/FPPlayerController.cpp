@@ -53,6 +53,8 @@ void AFPPlayerController::BeginPlay()
 
 void AFPPlayerController::BeginPlayingState()
 {
+	Super::BeginPlayingState();
+
 	if (IsLocalController())
 	{
 		FString MapName = GetWorld()->GetMapName();
@@ -89,64 +91,43 @@ void AFPPlayerController::BeginPlayingState()
 
 void AFPPlayerController::ServerRequestCharacterUpdate_Implementation(int32 NewIndex)
 {
-	AFPGameState* GS = Cast<AFPGameState>(GetWorld()->GetGameState());
+	AFPGameState* GS = GetWorld() ? GetWorld()->GetGameState<AFPGameState>() : nullptr;
 	AFPPlayerState* PS = GetPlayerState<AFPPlayerState>();
-	if (!GS || !PS)
-	{
-		return;
-	}
+	AFPGameMode* GM = GetWorld() ? Cast<AFPGameMode>(GetWorld()->GetAuthGameMode()) : nullptr;
 
-	AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode());
-	if (!GM)
+	if (!GS || !PS || !GM)
 	{
 		return;
 	}
 
 	const int32 MaxCharacterCount = GM->GetCharacterCount();
-
 	if (NewIndex < 0 || NewIndex >= MaxCharacterCount)
 	{
 		return;
 	}
 
-	if (MyCurrentOccupiedIndex != -1)
+	if (MyCurrentOccupiedIndex == NewIndex)
 	{
-		GS->OccupiedIndices.Remove(MyCurrentOccupiedIndex);
+		ClientSyncCharacterSelection(NewIndex);
+		return;
 	}
 
-	int32 FinalIndex = NewIndex;
-
-	if (GS->OccupiedIndices.Contains(FinalIndex))
+	if (GS->OccupiedIndices.Contains(NewIndex))
 	{
-		bool bFound = false;
-
-		for (int32 i = 0; i < MaxCharacterCount; ++i)
-		{
-			int32 CandidateIndex = (NewIndex + i + 1) % MaxCharacterCount;
-			if (!GS->OccupiedIndices.Contains(CandidateIndex))
-			{
-				FinalIndex = CandidateIndex;
-				bFound = true;
-				break;
-			}
-		}
-
-		if (!bFound)
-		{
-			if (MyCurrentOccupiedIndex != -1)
-			{
-				GS->OccupiedIndices.AddUnique(MyCurrentOccupiedIndex);
-			}
-			return;
-		}
+		ClientSyncCharacterSelection(MyCurrentOccupiedIndex >= 0 ? MyCurrentOccupiedIndex : PS->CharacterIndex);
+		return;
 	}
 
-	GS->OccupiedIndices.AddUnique(FinalIndex);
-	MyCurrentOccupiedIndex = FinalIndex;
-	PS->CharacterIndex = FinalIndex;
+	GS->UpdateOccupiedIndex(MyCurrentOccupiedIndex, NewIndex);
+
+	MyCurrentOccupiedIndex = NewIndex;
+	PS->CharacterIndex = NewIndex;
+
+	GM->ApplyCharacterSelectionFromIndex(PS, NewIndex);
+	ClientSyncCharacterSelection(NewIndex);
 
 	UE_LOG(LogTemp, Warning, TEXT("최종 캐릭터 인덱스 적용: %s -> %d"),
-		*PS->GetPlayerName(), FinalIndex);
+		*PS->GetPlayerName(), NewIndex);
 }
 void AFPPlayerController::PostSeamlessTravel()
 {
@@ -424,6 +405,11 @@ void AFPPlayerController::ClientSetCountdownInputLock_Implementation(bool bLocke
 	}
 }
 
+void AFPPlayerController::ClientSyncCharacterSelection_Implementation(int32 ConfirmedIndex)
+{
+	MyCurrentOccupiedIndex = ConfirmedIndex;
+}
+
 void AFPPlayerController::DebugEndRound()
 {
 	// 서버인지 확인
@@ -448,18 +434,14 @@ void AFPPlayerController::ServerAssignRandomCharacterIndex_Implementation()
 {
 	AFPGameState* GS = GetWorld() ? GetWorld()->GetGameState<AFPGameState>() : nullptr;
 	AFPPlayerState* PS = GetPlayerState<AFPPlayerState>();
-	if (!GS || !PS)
+	AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode());
+
+	if (!GS || !PS || !GM)
 	{
 		return;
 	}
 
 	if (MyCurrentOccupiedIndex != -1)
-	{
-		return;
-	}
-
-	AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode());
-	if (!GM)
 	{
 		return;
 	}
@@ -483,6 +465,7 @@ void AFPPlayerController::ServerAssignRandomCharacterIndex_Implementation()
 	const int32 RandomArrayIndex = FMath::RandRange(0, AvailableIndices.Num() - 1);
 	const int32 ChosenIndex = AvailableIndices[RandomArrayIndex];
 
+	// 랜덤도 최종 적용은 같은 함수로 통일
 	ServerRequestCharacterUpdate(ChosenIndex);
 }
 void AFPPlayerController::CreateLobbyWidgetIfNeeded()

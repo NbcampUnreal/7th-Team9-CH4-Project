@@ -15,6 +15,7 @@ class UFPPlayerSlotWidget;
 class UFPPlayerListEntryWidget;
 class UFPLobbyCenterSlotWidget;
 class AFPPlayerState;
+class UFPCharacterDefinition;
 
 UCLASS()
 class FARMSPOPCORN_API UFPLobbyWidget : public UUserWidget
@@ -99,6 +100,8 @@ protected:
 	class UButton* Btn_Prev;
 	UPROPERTY(meta = (BindWidget))
 	class UButton* Btn_Next;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lobby")
+	TArray<TObjectPtr<UFPCharacterDefinition>> CharacterDefinitions;
 
 
 	//준비 버튼 클릭

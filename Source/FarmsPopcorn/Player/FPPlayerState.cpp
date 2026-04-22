@@ -42,9 +42,9 @@ void AFPPlayerState::CopyProperties(APlayerState* PlayerState)
 		NewPS->AssignedCharacterIcon = this->AssignedCharacterIcon;
 		NewPS->TeamID = this->TeamID;
 		NewPS->CharacterIndex = this->CharacterIndex;
+		NewPS->CustomPlayerName = this->CustomPlayerName;
 	}
 }
-
 void AFPPlayerState::ServerSetCharacterIndex_Implementation(int32 NewIndex)
 {
 	CharacterIndex = NewIndex;
