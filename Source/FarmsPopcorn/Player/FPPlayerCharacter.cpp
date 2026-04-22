@@ -119,19 +119,21 @@ void AFPPlayerCharacter::BeginPlay()
 
    // TryApplyInputMappingContext();   //추가사항
    // OnRep_CharacterIndex();  //추가사항
-
+    SyncCharacterVisualFromPlayerState();
 }
 
 void AFPPlayerCharacter::PossessedBy(AController* NewController)
 {
-    Super::PossessedBy(NewController);
-    TryApplyInputMappingContext();
+	Super::PossessedBy(NewController);
+	TryApplyInputMappingContext();
+	SyncCharacterVisualFromPlayerState();
 }
 
 void AFPPlayerCharacter::OnRep_Controller()
 {
     Super::OnRep_Controller();
     TryApplyInputMappingContext();
+    SyncCharacterVisualFromPlayerState();
 }
 
 
@@ -561,6 +563,10 @@ void AFPPlayerCharacter::Server_SetCharacterIndex_Implementation(
     OnRep_CharacterIndex();
 }
 
+void AFPPlayerCharacter::OnRep_PlayerState()
+{
+}
+
 void AFPPlayerCharacter::OnRep_CharacterIndex()
 {
     if (CharacterMeshes.IsValidIndex(CharacterIndex))
@@ -572,6 +578,22 @@ void AFPPlayerCharacter::OnRep_CharacterIndex()
     if (CharacterAnimClassArray.IsValidIndex(CharacterIndex))
     {
         GetMesh()->SetAnimInstanceClass(CharacterAnimClassArray[CharacterIndex]);
+    }
+}
+
+void AFPPlayerCharacter::SyncCharacterVisualFromPlayerState()
+{
+    {
+        if (AFPPlayerState* FPPS = GetPlayerState<AFPPlayerState>())
+        {
+            CharacterIndex = FPPS->CharacterIndex;
+            OnRep_CharacterIndex();
+
+            if (!FPPS->CustomPlayerName.IsEmpty())
+            {
+                CurrentName = FPPS->CustomPlayerName;
+            }
+        }
     }
 }
 

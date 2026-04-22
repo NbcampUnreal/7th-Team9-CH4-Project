@@ -208,6 +208,24 @@ void AFPGameState::SetPlayersCountdownLocked(bool bLocked)
 		}
 	}
 }
+void AFPGameState::UpdateOccupiedIndex(int32 OldIndex, int32 NewIndex)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (OldIndex >= 0)
+	{
+		OccupiedIndices.Remove(OldIndex);
+	}
+
+	if (NewIndex >= 0)
+	{
+		OccupiedIndices.AddUnique(NewIndex);
+	}
+}
+
 
 void AFPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
