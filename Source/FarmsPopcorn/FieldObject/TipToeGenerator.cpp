@@ -4,10 +4,12 @@
 #include "FakeTile.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Math/UnrealMathUtility.h"
+#include "Net/UnrealNetwork.h"
 
 ATipToeGenerator::ATipToeGenerator()
 {
     PrimaryActorTick.bCanEverTick = false;
+    bReplicates = true;
 
     RealMeshComp = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("RealMeshComp"));
     RootComponent = RealMeshComp;
@@ -29,12 +31,46 @@ int32 ATipToeGenerator::GetIndex(int32 X, int32 Y) const
     return X * Columns + Y;
 }
 
+void ATipToeGenerator::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(ATipToeGenerator, GridData);
+    DOREPLIFETIME(ATipToeGenerator, FinalInterval);
+}
+
 void ATipToeGenerator::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
 
     // 맵 재생성
     GenerateMaze();
+}
+
+void ATipToeGenerator::Multicast_SpawnFakeTiles_Implementation(float InFinalInterval)
+{
+    if (!FakeTileClass) return;
+
+    // FakeMeshComp 인스턴스 대신 GridData에서 직접 위치 계산
+    for (int32 X = 0; X < Rows; ++X)
+    {
+        for (int32 Y = 0; Y < Columns; ++Y)
+        {
+            if (!GridData[GetIndex(X, Y)]) // 가짜 블록만
+            {
+                FVector Location = FVector(X * InFinalInterval, Y * InFinalInterval, 0.f);
+                FTransform T;
+                T.SetLocation(Location);
+
+                FActorSpawnParameters SpawnParams;
+                SpawnParams.SpawnCollisionHandlingOverride = 
+                    ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+                GetWorld()->SpawnActor<AFakeTile>(FakeTileClass, T, SpawnParams);
+            }
+        }
+    }
+
+    if (FakeMeshComp) FakeMeshComp->ClearInstances();
 }
 
 void ATipToeGenerator::GenerateMaze()
@@ -115,32 +151,34 @@ void ATipToeGenerator::GenerateMaze()
     }
 }
 
+void ATipToeGenerator::OnRep_GridData()
+{
+    // GridData 기반으로 RealMeshComp 인스턴스 재구성
+    if (RealMeshComp) RealMeshComp->ClearInstances();
+
+    for (int32 X = 0; X < Rows; ++X)
+    {
+        for (int32 Y = 0; Y < Columns; ++Y)
+        {
+            if (GridData[GetIndex(X, Y)]) // 진짜 블록만
+            {
+                FVector Location = FVector(X * FinalInterval, Y * FinalInterval, 0.f);
+                FTransform T;
+                T.SetLocation(Location);
+                RealMeshComp->AddInstance(T);
+            }
+        }
+    }
+}
+
 void ATipToeGenerator::BeginPlay()
 {
     Super::BeginPlay();
 
-    // 매 실행시 발판 위치 재생성
-    GenerateMaze();
-
-    // FakeTileClass를 잘 넣었는지 확인
-    if (FakeTileClass && FakeMeshComp)
+    if (HasAuthority())
     {
-        int32 InstanceCount = FakeMeshComp->GetInstanceCount();
-
-        // 강제 소환
-        FActorSpawnParameters SpawnParams;
-        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-        // FakeTile개수만큼 액터 소환
-        for (int32 i = 0; i < InstanceCount; i++)
-        {
-            FTransform Transform;
-            FakeMeshComp->GetInstanceTransform(i, Transform, true);
-
-            GetWorld()->SpawnActor<AFakeTile>(FakeTileClass, Transform, SpawnParams);
-        }
-
-        // 인스턴스 삭제
-        FakeMeshComp->ClearInstances();
+        // 매 실행시 발판 위치 재생성
+        GenerateMaze();
+        Multicast_SpawnFakeTiles(FinalInterval);
     }
 }
