@@ -26,6 +26,9 @@ protected:
     UPROPERTY(VisibleAnywhere, Category = "Components")
     class UStaticMeshComponent* PlatformMesh;
 
+    UPROPERTY(EditAnywhere, Category = "Settings|Mode")
+    bool bIsAutomatic = true;
+
     // 에디터 설정 변수 선언
     UPROPERTY(EditAnywhere, Category = "Settings")
     float MaxHeight = 400.0f;
@@ -37,5 +40,7 @@ private:
     // 내부 위치 계산용 변수 선언
     FVector StartPos;
     FVector TargetPos;
+
     bool bIsActivated = false;
+    bool bMovingToTarget = true;
 };
