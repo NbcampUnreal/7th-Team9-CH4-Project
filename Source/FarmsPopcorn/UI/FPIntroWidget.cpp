@@ -14,6 +14,7 @@ void UFPIntroWidget::NativeConstruct()
 {
     Super::NativeConstruct();
     
+    /*
     // 데디케이티드 서버로 자동 접속
     APlayerController* PC = GetOwningPlayer();
     if (PC)
@@ -21,6 +22,7 @@ void UFPIntroWidget::NativeConstruct()
         //아래의 IP는 서버의 IP로, 서버가 바뀔 때 IP도 그에 맞춰서 변경 해줘야함.
         PC->ClientTravel(TEXT("220.77.247.47:7777"), ETravelType::TRAVEL_Absolute);
     }
+    */
     
     UE_LOG(LogTemp, Warning, TEXT("=== IntroWidget Construct ==="));
     
