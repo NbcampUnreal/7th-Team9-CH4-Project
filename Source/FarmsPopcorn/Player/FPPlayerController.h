@@ -77,6 +77,12 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ClientShowFinalResult();
 
+	UFUNCTION(Server, Reliable)
+	void ServerRequestReturnToLobbyUI();
+
+	UFUNCTION(Client, Reliable)
+	void ClientShowLobbyUIFromResult();
+
 	UFUNCTION(Client, Reliable)
 	void ClientShowPostTravelLoading(TSubclassOf<UFPLoadingWidget> LoadingClass, float Duration, const FString& LoadingText);
 	UFUNCTION(Client, Reliable)
@@ -84,6 +90,9 @@ public:
 	
 	UFUNCTION(Client, Reliable)
 	void ClientSyncCharacterSelection(int32 ConfirmedIndex);
+
+	UFUNCTION(Client, Reliable)
+	void ClientSyncResultScores(int32 InRedScore, int32 InBlueScore, int32 InRound);
 
 
 	UFUNCTION(Exec)

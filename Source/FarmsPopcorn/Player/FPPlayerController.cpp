@@ -14,7 +14,9 @@
 #include "GameFramework/GameUserSettings.h"
 #include "Player/FPPlayerCharacter.h"
 #include "UI/FPLoadingWidget.h"
+#include "UI/FPScoreResultWidget.h"
 #include "GameFramework/PlayerController.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 
 
 void AFPPlayerController::BeginPlay()
@@ -381,6 +383,97 @@ void AFPPlayerController::ClientShowFinalResult_Implementation()
 
 }
 
+void AFPPlayerController::ServerRequestReturnToLobbyUI_Implementation()
+{
+	if (!HasAuthority() || !GetWorld())
+	{
+		return;
+	}
+
+	if (AFPGameMode* GM = Cast<AFPGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		GM->RedTeamScore = 0;
+		GM->BlueTeamScore = 0;
+		GM->CurrentRound = 1;
+	}
+
+	if (AFPGameState* GS = GetWorld()->GetGameState<AFPGameState>())
+	{
+		GS->RedTeamScore = 0;
+		GS->BlueTeamScore = 0;
+		GS->RedTotalScore = 0;
+		GS->BlueTotalScore = 0;
+		GS->CurrentRound = 1;
+	}
+
+	if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
+	{
+		GI->SaveCurrentRound = 0;
+		GI->SaveRedScore = 0;
+		GI->SaveBlueScore = 0;
+	}
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (AFPPlayerController* PC = Cast<AFPPlayerController>(It->Get()))
+		{
+			PC->ClientShowLobbyUIFromResult();
+		}
+	}
+}
+
+void AFPPlayerController::ClientShowLobbyUIFromResult_Implementation()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	// 포인터로 관리되지 않은 결과 위젯(맵/블루프린트에서 직접 생성된 위젯)도 모두 제거
+	TArray<UUserWidget*> ResultWidgets;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(this, ResultWidgets, UFPScoreResultWidget::StaticClass(), false);
+	for (UUserWidget* Widget : ResultWidgets)
+	{
+		if (Widget)
+		{
+			Widget->RemoveFromParent();
+		}
+	}
+
+	if (RoundResultWidget && RoundResultWidget->IsInViewport())
+	{
+		RoundResultWidget->RemoveFromParent();
+	}
+	if (FinalResultWidget && FinalResultWidget->IsInViewport())
+	{
+		FinalResultWidget->RemoveFromParent();
+	}
+
+	if (LobbyWidgetClass && (!LobbyWidgetInstance || !LobbyWidgetInstance->IsInViewport()))
+	{
+		LobbyWidgetInstance = CreateWidget<UUserWidget>(this, LobbyWidgetClass);
+		if (LobbyWidgetInstance)
+		{
+			LobbyWidgetInstance->AddToViewport();
+		}
+	}
+
+	if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
+	{
+		GI->SaveCurrentRound = 0;
+		GI->SaveRedScore = 0;
+		GI->SaveBlueScore = 0;
+	}
+
+	bShowMouseCursor = true;
+	FInputModeUIOnly InputMode;
+	if (LobbyWidgetInstance)
+	{
+		InputMode.SetWidgetToFocus(LobbyWidgetInstance->TakeWidget());
+	}
+	SetInputMode(InputMode);
+}
+
 void AFPPlayerController::ClientShowPostTravelLoading_Implementation(TSubclassOf<UFPLoadingWidget> LoadingClass, float Duration, const FString& LoadingText)
 {
 	if (!IsLocalController() || !LoadingClass)
@@ -418,6 +511,16 @@ void AFPPlayerController::ClientSetCountdownInputLock_Implementation(bool bLocke
 void AFPPlayerController::ClientSyncCharacterSelection_Implementation(int32 ConfirmedIndex)
 {
 	MyCurrentOccupiedIndex = ConfirmedIndex;
+}
+
+void AFPPlayerController::ClientSyncResultScores_Implementation(int32 InRedScore, int32 InBlueScore, int32 InRound)
+{
+	if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
+	{
+		GI->SaveRedScore = InRedScore;
+		GI->SaveBlueScore = InBlueScore;
+		GI->SaveCurrentRound = InRound;
+	}
 }
 
 void AFPPlayerController::DebugEndRound()

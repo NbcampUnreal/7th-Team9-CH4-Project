@@ -687,11 +687,15 @@ void AFPGameMode::StartNextRound()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("=== 게임 종료 (CurrentRound: %d, MaxRounds: %d) ==="), CurrentRound, MaxRounds);
 		
+		const int32 FinalRedTotal = GS->RedTotalScore;
+		const int32 FinalBlueTotal = GS->BlueTotalScore;
+
 		if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
 		{
-			GI->SaveCurrentRound = 0;
-			GI->SaveRedScore = 0;
-			GI->SaveBlueScore = 0;
+			// 서버 GI에도 최종 점수를 유지해둔다.
+			GI->SaveCurrentRound = CurrentRound;
+			GI->SaveRedScore = FinalRedTotal;
+			GI->SaveBlueScore = FinalBlueTotal;
 		}
 
 		if (LoadingWidgetClass)
@@ -715,7 +719,12 @@ void AFPGameMode::StartNextRound()
 		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 		{
 			AFPPlayerController* PC = Cast<AFPPlayerController>(It->Get());
-			if (PC) PC->ClientShowFinalResult();
+			if (PC)
+			{
+				// 각 클라이언트 GI에도 최종 점수를 반영해서 결과 맵에서 읽을 수 있게 한다.
+				PC->ClientSyncResultScores(FinalRedTotal, FinalBlueTotal, CurrentRound);
+				PC->ClientShowFinalResult();
+			}
 		}
 		return;
 	}

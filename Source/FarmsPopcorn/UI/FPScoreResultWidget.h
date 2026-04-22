@@ -80,6 +80,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Result")
 	TSubclassOf<UUserWidget> PlayerEntryWidgetClass;//플레이어 리스트에 개별표기
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<UUserWidget> LobbyWidgetClass;
 private:
 	UFUNCTION()
 	void OnBackToLobbyClicked(); //로비버튼 클릭
