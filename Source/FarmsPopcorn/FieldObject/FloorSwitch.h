@@ -39,14 +39,22 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Settings")
     float LerpSpeed = 5.0f;
 
+    UPROPERTY(ReplicatedUsing = OnRep_SwitchLocation)
+    FVector ReplicatedSwitchLocation;
+    
 private:
     FVector StartPos;
     FVector TargetPos;
     bool bIsPressed = false;
 
     UFUNCTION()
+    void OnRep_SwitchLocation();
+    
+    UFUNCTION()
     void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
     UFUNCTION()
     void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+    
+    void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 };

@@ -5,18 +5,19 @@
 AMovingPlatform::AMovingPlatform()
 {
     PrimaryActorTick.bCanEverTick = true;
-
-    RootScene = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
-    RootComponent = RootScene;
-
+    bReplicates = true;
+    SetReplicateMovement(true);
+    
     PlatformMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlatformMesh"));
-    PlatformMesh->SetupAttachment(RootScene);
+    RootComponent = PlatformMesh;
 }
 
 void AMovingPlatform::BeginPlay()
 {
     Super::BeginPlay();
-
+    
+    if (!HasAuthority()) return;
+    
     StartPos = PlatformMesh->GetRelativeLocation();
     TargetPos = StartPos + FVector(0.0f, 0.0f, MaxHeight);
 }
@@ -24,6 +25,7 @@ void AMovingPlatform::BeginPlay()
 void AMovingPlatform::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
+    if (!HasAuthority()) return;
 
     FVector CurrentPos = PlatformMesh->GetRelativeLocation();
     FVector Target = bIsActivated ? TargetPos : StartPos;
@@ -48,7 +50,7 @@ void AMovingPlatform::Tick(float DeltaTime)
         Target = bIsActivated ? TargetPos : StartPos;
     }
 
-    PlatformMesh->SetRelativeLocation(FMath::VInterpTo(CurrentPos, Target, DeltaTime, LerpSpeed));
+    SetActorLocation(FMath::VInterpTo(CurrentPos, Target, DeltaTime, LerpSpeed));
 }
 
 void AMovingPlatform::SetPlatformActive(bool bActive)

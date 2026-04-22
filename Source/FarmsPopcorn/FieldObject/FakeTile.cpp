@@ -8,7 +8,8 @@
 AFakeTile::AFakeTile()
 {
     PrimaryActorTick.bCanEverTick = false;
-
+    bReplicates = true;
+    SetReplicateMovement(true);
     // 메쉬 설정
     TileMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TileMesh"));
     RootComponent = TileMesh;
@@ -31,6 +32,8 @@ void AFakeTile::BeginPlay()
 
 void AFakeTile::OnPlayerStepped(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+    if (!HasAuthority()) return;
+    
     if (OtherActor && OtherActor->IsA(ACharacter::StaticClass()))
     {
         GetWorldTimerManager().SetTimer(FallTimerHandle, this, &AFakeTile::DropTile, FallDelay, false);
@@ -39,6 +42,8 @@ void AFakeTile::OnPlayerStepped(UPrimitiveComponent* OverlappedComp, AActor* Oth
 
 void AFakeTile::DropTile()
 {
+    if (!HasAuthority()) return;
+    
     if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Red, TEXT("DropTile Executed! Physics ON."));
 
     TileMesh->SetSimulatePhysics(true);
