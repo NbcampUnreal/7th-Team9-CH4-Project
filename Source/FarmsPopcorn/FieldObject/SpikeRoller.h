@@ -14,14 +14,18 @@ public:
     virtual void Tick(float DeltaTime) override;
 
 protected:
-    virtual void BeginPlay() override;
 
     UPROPERTY(VisibleAnywhere, Category = "Components")
     UStaticMeshComponent* RollerMesh;
+    
+    UPROPERTY(Replicated)
+    float ElapsedTime = 0.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
     float RotationSpeed = 90.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
     bool bReverseRotation = false;
+    
+    void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 };
