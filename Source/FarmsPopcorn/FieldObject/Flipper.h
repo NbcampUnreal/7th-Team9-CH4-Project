@@ -1,4 +1,6 @@
-﻿#pragma once
+﻿// Flipper.h
+
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -17,7 +19,7 @@ public:
     USceneComponent* SceneRoot;
 
     UPROPERTY(VisibleAnywhere, Category = "Components")
-    UStaticMeshComponent* FlipperMesh;
+    class UStaticMeshComponent* FlipperMesh;
 
     UPROPERTY(EditAnywhere, Category = "Settings")
     float MaxRotationAngle = -90.0f;
@@ -39,6 +41,13 @@ public:
 
     UPROPERTY(EditAnywhere, Category = "Settings")
     float StartOffset = 0.0f;
+
+    UPROPERTY(EditAnywhere, Category = "Flipper Settings")
+    FVector RotationAxis = FVector(1.0f, 0.0f, 0.0f);  
+
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    class USceneComponent* PivotScene;
+     
 
 private:
     float ElapsedTime = 0.0f;

@@ -1,4 +1,6 @@
-﻿#include "SwitchPlatform.h"
+﻿// SwitchPlatform.cpp
+
+#include "SwitchPlatform.h"
 #include "Components/BoxComponent.h"
 
 ASwitchPlatform::ASwitchPlatform()

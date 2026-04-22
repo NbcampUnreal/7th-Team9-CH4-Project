@@ -13,24 +13,29 @@ public:
     AMovingPlatform();
     virtual void Tick(float DeltaTime) override;
 
+    // 스위치에서 호출할 함수 선언
+    void SetPlatformActive(bool bActive);
+
 protected:
     virtual void BeginPlay() override;
 
+    // 컴포넌트 선언
     UPROPERTY(VisibleAnywhere, Category = "Components")
-    UStaticMeshComponent* PlatformMesh;
+    class USceneComponent* RootScene;
 
-    // --- 에디터 설정 변수 ---
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    class UStaticMeshComponent* PlatformMesh;
 
-    // 목표 지점 오프셋 (에디터에서 화살표나 수치로 직접 조정 가능)
-    // 예: (500, 0, 0)이면 X축으로 500만큼 갔다가 돌아옴
-    UPROPERTY(EditAnywhere, Category = "Settings", meta = (MakeEditWidget = true))
-    FVector TargetOffset = FVector(0.0f, 0.0f, 500.0f);
-
-    // 이동 속도 (0.0 ~ 1.0 사이를 왕복하는 속도)
+    // 에디터 설정 변수 선언
     UPROPERTY(EditAnywhere, Category = "Settings")
-    float MoveSpeed = 1.0f;
+    float MaxHeight = 400.0f;
+
+    UPROPERTY(EditAnywhere, Category = "Settings")
+    float LerpSpeed = 5.0f;
 
 private:
-    FVector StartLocation;
-    FVector TargetLocation;
+    // 내부 위치 계산용 변수 선언
+    FVector StartPos;
+    FVector TargetPos;
+    bool bIsActivated = false;
 };
