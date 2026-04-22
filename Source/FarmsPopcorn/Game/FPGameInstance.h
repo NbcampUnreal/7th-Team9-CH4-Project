@@ -23,7 +23,8 @@ public:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GameData")
 	FString SaveNickName; //플레이어네임
-	
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GameData")
+	int32 SaveCurrentRound = 0;
 	//팀스코어
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GameData")
 	int32 SaveRedScore = 0;

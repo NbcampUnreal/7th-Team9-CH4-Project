@@ -1,6 +1,9 @@
 ﻿#include "Game/FPGameMode.h"
 #include "FPGameState.h"
 #include "FPGameInstance.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/GameUserSettings.h"
+#include "Player/FPPlayerCharacter.h"
 #include "Player/FPPlayerState.h"
 #include "Player/FPPlayerController.h"
 #include "UI/FPLoadingWidget.h"
@@ -50,15 +53,20 @@ void AFPGameMode::BeginPlay()
 	{
 		RedTeamScore = GI->SaveRedScore;
 		BlueTeamScore = GI->SaveBlueScore;
-        
+		
+		// ✅ GI에서 CurrentRound 복원
+		CurrentRound = GI->SaveCurrentRound;
+		if (CurrentRound == 0) CurrentRound = 1;  // 최초 시작
+		
 		UE_LOG(LogTemp, Warning, 
-			TEXT("점수 - Red: %d, Blue: %d"), 
-			RedTeamScore, BlueTeamScore);
+			TEXT("BeginPlay - Round: %d, Red: %d, Blue: %d"), 
+			CurrentRound, RedTeamScore, BlueTeamScore);
 
 		if (AFPGameState* GS = GetGameState<AFPGameState>())
 		{
 			GS->RedTeamScore = RedTeamScore;
 			GS->BlueTeamScore = BlueTeamScore;
+			GS->CurrentRound = CurrentRound;  
 		}
 	}
 }
@@ -100,12 +108,21 @@ void AFPGameMode::HandleSeamlessTravelPlayer(AController*& C)
 		{
 			FPPC->ClientShowPostTravelLoading(
 				LoadingWidgetClass,
-				2.0f,
+				0.5f,
 				TEXT("맵 로딩 중...")
 			);
 		}
 	}
-	
+	const FString MapName = GetWorld()->GetMapName();
+	if (MapName.Contains(TEXT("L_Game_Round")))
+	{
+		if (AFPPlayerCharacter* FPPC = Cast<AFPPlayerCharacter>(PC->GetPawn()))
+		{
+			FPPC->GetCharacterMovement()->SetMovementMode(MOVE_None);
+		}
+		PC->SetInputMode(FInputModeGameOnly());
+		PC->bShowMouseCursor = false;
+	}
 	UE_LOG(LogTemp, Warning, TEXT("✓ Player initialized after seamless travel"));
 }
 
@@ -408,7 +425,7 @@ void AFPGameMode::StartGameCountdown()
 		GetWorld()->GetTimerManager().SetTimer(
 			CountDownHandle,
 			StartRoundDelegate,
-			3.0f,
+			3.0f,//수정
 			false
 		);
 		return;
@@ -528,7 +545,7 @@ void AFPGameMode::ExecuteMapTravel()
 
 	UE_LOG(LogTemp, Warning, TEXT("서버 트래블 시도 중: %s"), *LevelPath);
 	
-	GetWorld()->ServerTravel(LevelPath + TEXT("?listen"), true);
+	GetWorld()->ServerTravel(LevelPath, true);
 }
 
 void AFPGameMode::ResetAvatarSelection()
@@ -623,7 +640,7 @@ void AFPGameMode::EndRound()
 	AFPGameState* GS = GetGameState<AFPGameState>();
 	if (GS)
 	{
-		GS->RedTeamScore = RedTeamScore;
+		GS->RedTeamScore = RedTeamScore; 
 		GS->BlueTeamScore = BlueTeamScore;
 		
 		GS->SetGamePhase(EFPGamePhase::Result);
@@ -637,36 +654,46 @@ void AFPGameMode::EndRound()
 			GS->RoundWinnerTeam = EFPTeamID::TeamBlue;
 		}
 	}
+	
+	// ✅ 결과 UI 표시
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		AFPPlayerController* PC = Cast <AFPPlayerController>(It->Get());
+		AFPPlayerController* PC = Cast<AFPPlayerController>(It->Get());
 		if (PC)
 		{
 			PC->ClientShowRoundResult();
 		}
 	}
-	//N초후 다음 라운드 시작
+	
 	GetWorldTimerManager().SetTimer(
 		RoundResultTimerHandle,
 		this,
 		&AFPGameMode::StartNextRound,
-		ResultDisplayTime,
+		ResultDisplayTime,  // 1초
 		false
 	);
+	
+	UE_LOG(LogTemp, Warning, TEXT("=== EndRound - 결과 화면 표시 (%.1f초 후 다음 라운드) ==="), ResultDisplayTime);
 }
 
 void AFPGameMode::StartNextRound()
 {
 	AFPGameState* GS = GetGameState<AFPGameState>();
 	if (!GS) return;
-	//이번 라운드 점수를누적 총점에 합산
+	
 	GS->RedTotalScore += GS->RedTeamScore;
 	GS->BlueTotalScore += GS->BlueTeamScore;
 
-	//최종 라운드면 최종결과 맵 이동
 	if (CurrentRound >= MaxRounds)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("=== 게임 종료 ==="));
+		UE_LOG(LogTemp, Warning, TEXT("=== 게임 종료 (CurrentRound: %d, MaxRounds: %d) ==="), CurrentRound, MaxRounds);
+		
+		if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
+		{
+			GI->SaveCurrentRound = 0;
+			GI->SaveRedScore = 0;
+			GI->SaveBlueScore = 0;
+		}
 
 		if (LoadingWidgetClass)
 		{
@@ -693,20 +720,23 @@ void AFPGameMode::StartNextRound()
 		}
 		return;
 	}
-	//다음 라운드 준비
+	
 	CurrentRound++;
 	GS->CurrentRound = CurrentRound;
+	
+	if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
+	{
+		GI->SaveCurrentRound = CurrentRound;
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("Round 진행: %d / %d"), CurrentRound, MaxRounds);
 
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
 		AFPPlayerController* PC = Cast<AFPPlayerController>(It->Get());
-		if (PC)
-		{
-			PC->ClientHideRoundResult();
-		}
+		if (PC) PC->ClientHideRoundResult();
 	}
 
-	// 다음 라운드 시작 전에 라운드 점수 초기화
 	RedTeamScore = 0;
 	BlueTeamScore = 0;
 	GS->RedTeamScore = 0;
@@ -715,7 +745,7 @@ void AFPGameMode::StartNextRound()
 	const FString NextRoundPath = GetRoundMapPath(CurrentRound);
 	if (NextRoundPath.IsEmpty())
 	{
-		UE_LOG(LogTemp, Error, TEXT("다음 라운드 맵 경로를 찾을 수 없습니다. Round: %d"), CurrentRound);
+		UE_LOG(LogTemp, Error, TEXT(" 다음 라운드 맵 경로를 찾을 수 없습니다. Round: %d"), CurrentRound);
 		return;
 	}
 
@@ -727,23 +757,17 @@ void AFPGameMode::StartNextRound()
 			{
 				PC->ClientShowPostTravelLoading(
 					LoadingWidgetClass,
-					3.0f,
+					1.0f,  
 					FString::Printf(TEXT("Round %d 준비 중..."), CurrentRound)
 				);
 			}
 		}
 	}
 
-	FTimerDelegate RoundTravelDelegate = FTimerDelegate::CreateLambda([this, NextRoundPath]()
-	{
-		GetWorld()->ServerTravel(NextRoundPath + TEXT("?listen"), true);
-	});
-	GetWorldTimerManager().SetTimer(RoundResultTimerHandle, RoundTravelDelegate, 3.0f, false);
+	GetWorld()->ServerTravel(NextRoundPath + TEXT("?listen"), true);
 	
-
-	UE_LOG(LogTemp, Warning, TEXT("=== Round %d 시작 ==="), CurrentRound);
+	UE_LOG(LogTemp, Warning, TEXT("=== Round %d 이동 중 ==="), CurrentRound);
 }
-// FPGameMode.cpp의 StartNextRound() 와 추가 함수 (기존 코드 교체)
 
 void AFPGameMode::ShowRoundTransitionLoading()
 {
@@ -762,7 +786,7 @@ void AFPGameMode::ShowRoundTransitionLoading()
 						RoundNextLevel.ToSoftObjectPath().GetLongPackageName();
 				}
 
-				CurrentLoadingWidget->StartLoading(ELoadingType::RoundTransition, 3.0f);
+				CurrentLoadingWidget->StartLoading(ELoadingType::RoundTransition, 1.0f);
 				CurrentLoadingWidget->SetLoadingText(FString::Printf(
 					TEXT("Round %d\n\n레드팀: %d\n블루팀: %d"),
 					CurrentRound, RedTeamScore, BlueTeamScore

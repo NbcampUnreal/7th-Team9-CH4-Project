@@ -38,6 +38,7 @@ void AFPSlimeCharacter::Multicast_SetBlinkRed_Implementation(bool bBlink)
 
 void AFPSlimeCharacter::SetBlinkRed(bool bBlink)
 {
+	UE_LOG(LogTemp, Warning, TEXT("SetBlinkRed called, HasAuthority: %d"), HasAuthority());
 	if (!HasAuthority()) return;
 	
 	Multicast_SetBlinkRed(bBlink);

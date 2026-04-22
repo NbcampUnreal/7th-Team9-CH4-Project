@@ -50,6 +50,7 @@ protected:
 
 	void CheckGameStateAndCreateUI();
 	virtual void PostSeamlessTravel() override;
+	void ForceSetScalabilityToMedium();
 
 public:
 	UFUNCTION(Server, Reliable)

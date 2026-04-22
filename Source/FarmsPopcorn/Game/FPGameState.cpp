@@ -24,15 +24,15 @@ void AFPGameState::BeginPlay()
 		const FString MapName = GetWorld()->GetMapName();
 		if (MapName.Contains(TEXT("L_Game_Round")))
 		{
-			EarliestCountdownStartTime = GetWorld()->GetTimeSeconds() + 2.1f;
+			EarliestCountdownStartTime = GetWorld()->GetTimeSeconds() + 0.1f;
 			// 모든 플레이어의 로딩/폰 소유가 끝난 뒤 카운트다운 시작
 			GetWorld()->GetTimerManager().SetTimer(
 				RoundStartCheckHandle,
 				this,
 				&AFPGameState::TryStartRoundCountdown,
-				0.2f,
+				0.1f,
 				true,
-				0.1f
+				0.0f
 			);
 			return;
 		}
@@ -47,6 +47,7 @@ void AFPGameState::BeginPlay()
 				SetGamePhase(EFPGamePhase::InGame);
 			}
 		}
+		
 	}
 }
 void AFPGameState::OnRep_GamePhase()
@@ -98,7 +99,7 @@ void AFPGameState::HandleCountDownStarted()
 
 void AFPGameState::OnRep_RemainingTime()
 {
-	int32 Sec = FMath::CeilToInt(RemainingTime); // 2.9 → 3, 1.0 → 1
+	int32 Sec = FMath::CeilToInt(RemainingTime); 
 	OnCountdownTick.Broadcast(FMath::Max(0, Sec));
 }
 void AFPGameState::HandleGameStarted()

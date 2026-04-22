@@ -3,6 +3,7 @@
 #include "UI/FPResultWidget.h"
 #include "UI/FPUIManagerSubsystem.h"
 #include "UI/FPLobbyWidget.h"
+#include "HAL/IConsoleManager.h"
 #include "FPPlayerState.h"
 #include "Game/FPGameMode.h"
 #include "Engine/World.h"
@@ -10,6 +11,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "Game/FPGameState.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/GameUserSettings.h"
 #include "Player/FPPlayerCharacter.h"
 #include "UI/FPLoadingWidget.h"
 #include "GameFramework/PlayerController.h"
@@ -21,7 +23,7 @@ void AFPPlayerController::BeginPlay()
 
 	CreateNameWidgetIfNeeded();
 	CreateLobbyWidgetIfNeeded();
-
+	ForceSetScalabilityToMedium();
 	if (IsLocalController())
 	{
 		UFPGameInstance* GI = GetGameInstance<UFPGameInstance>();
@@ -46,6 +48,7 @@ void AFPPlayerController::BeginPlay()
 			UE_LOG(LogTemp, Log, TEXT("메뉴 맵 진입 (%s): 점수판을 생성하지 않습니다."), *MapName);
 		}
 	}
+	
 }
 
 void AFPPlayerController::BeginPlayingState()
@@ -143,7 +146,39 @@ void AFPPlayerController::PostSeamlessTravel()
 			}
 			}, 0.1f, false);
 	}
+	
 }
+void AFPPlayerController::ForceSetScalabilityToMedium()
+{
+	// 콘솔 매니저에서 해당 변수를 직접 찾습니다.
+	IConsoleVariable* CVar = IConsoleManager::Get().FindConsoleVariable(TEXT("sg.ViewDistanceQuality"));
+    
+	if (CVar)
+	{
+		// 핵심: 1로 설정하면서 권한을 ECVF_SetByCode로 줍니다.
+		// 이렇게 하면 스샷에 보신 'LastSetBy: Scalability'가 'LastSetBy: Code'로 바뀌며 
+		// 엔진이 함부로 3으로 되돌리지 못합니다.
+		CVar->Set(1, ECVF_SetByCode);
+	}
+
+	// 다른 주요 항목들도 똑같이 처리해줍니다.
+	TArray<FString> ScalabilityVars = {
+		TEXT("sg.ShadowQuality"),
+		TEXT("sg.AntiAliasingQuality"),
+		TEXT("sg.PostProcessQuality"),
+		TEXT("sg.TextureQuality"),
+		TEXT("sg.EffectsQuality")
+	};
+
+	for (const FString& VarName : ScalabilityVars)
+	{
+		if (IConsoleVariable* TargetCVar = IConsoleManager::Get().FindConsoleVariable(*VarName))
+		{
+			TargetCVar->Set(1, ECVF_SetByCode);
+		}
+	}
+}
+
 void AFPPlayerController::ApplyGameplayInputMode()
 {
 	if (!IsLocalController())
