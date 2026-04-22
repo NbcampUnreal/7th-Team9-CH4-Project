@@ -33,16 +33,12 @@ void AFakeTile::OnPlayerStepped(UPrimitiveComponent* OverlappedComp, AActor* Oth
 {
     if (OtherActor && OtherActor->IsA(ACharacter::StaticClass()))
     {
-        // 1. 센서가 플레이어를 인식했는지 확인하는 파란색 메시지
-        if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Blue, TEXT("Player Stepped! Timer Started."));
-
         GetWorldTimerManager().SetTimer(FallTimerHandle, this, &AFakeTile::DropTile, FallDelay, false);
     }
 }
 
 void AFakeTile::DropTile()
 {
-    // 2. 타이머가 끝나고 물리 연산이 켜졌는지 확인하는 빨간색 메시지
     if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Red, TEXT("DropTile Executed! Physics ON."));
 
     TileMesh->SetSimulatePhysics(true);
