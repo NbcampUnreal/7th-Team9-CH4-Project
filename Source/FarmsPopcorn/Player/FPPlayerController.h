@@ -68,7 +68,7 @@ public:
 
 	// 서버 → 클라이언트: 결과창 표시
 	UFUNCTION(Client, Reliable)
-	void ClientShowRoundResult();
+	void ClientShowRoundResult(int32 InRedTeamScore, int32 InBlueTeamScore);
 
 	// 서버 → 클라이언트: 결과창 숨김
 	UFUNCTION(Client, Reliable)

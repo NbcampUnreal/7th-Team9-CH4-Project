@@ -2,6 +2,7 @@
 #include "Game/FPGameState.h"
 #include "Game/FPGameMode.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "UI/FPResultWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "Player/FPPlayerCharacter.h"
@@ -118,13 +119,12 @@ void AFPGameState::HandleGameStarted()
 void AFPGameState::HandleResultStarted()
 {
 	APlayerController* PC = GetWorld()->GetFirstPlayerController();
-	AFPPlayerController* FPPC = Cast <AFPPlayerController>(PC);
+	AFPPlayerController* FPPC = Cast<AFPPlayerController>(PC);
 	if (FPPC)
 	{
-		FPPC->ClientShowRoundResult();
+		FPPC->ClientShowRoundResult(RedTeamScore, BlueTeamScore);
 	}
 }
-
 void AFPGameState::OnRep_IsReady()
 {
 	
@@ -238,6 +238,7 @@ void AFPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AFPGameState, BlueTeamScore);
 	DOREPLIFETIME(AFPGameState, RedTotalScore);
 	DOREPLIFETIME(AFPGameState, BlueTotalScore);
+	DOREPLIFETIME(AFPGameState, RoundWinnerTeam);
 	DOREPLIFETIME(AFPGameState, CurrentRound);
 	DOREPLIFETIME(AFPGameState, OccupiedIndices);
 }
