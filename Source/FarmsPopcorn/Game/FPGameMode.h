@@ -110,7 +110,7 @@ public:
     void EndRound();
     //결과창 띄우는 시간
     UPROPERTY(EditDefaultsOnly, Category = "Round")
-    float ResultDisplayTime = 5.0f;
+    float ResultDisplayTime = 1.0f;
     //최대 라운드 수
     UPROPERTY(EditDefaultsOnly, Category = "Round")
     int32 MaxRounds = 3;
