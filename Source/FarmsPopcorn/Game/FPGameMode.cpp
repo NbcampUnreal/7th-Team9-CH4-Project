@@ -661,10 +661,9 @@ void AFPGameMode::EndRound()
 		AFPPlayerController* PC = Cast<AFPPlayerController>(It->Get());
 		if (PC)
 		{
-			PC->ClientShowRoundResult();
+			PC->ClientShowRoundResult(RedTeamScore, BlueTeamScore);
 		}
 	}
-	
 	GetWorldTimerManager().SetTimer(
 		RoundResultTimerHandle,
 		this,

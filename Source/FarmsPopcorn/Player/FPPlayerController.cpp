@@ -267,34 +267,44 @@ void AFPPlayerController::ClientHideRoundResult_Implementation()
 		bShowMouseCursor = false;
 	}
 }
-void AFPPlayerController::ClientShowRoundResult_Implementation()
+void AFPPlayerController::ClientShowRoundResult_Implementation(int32 InRedTeamScore, int32 InBlueTeamScore)
 {
-	if (!RoundResultWidgetClass) return;
-	//위젯 생성
+	if (!RoundResultWidgetClass)
+	{
+		return;
+	}
+
 	if (!RoundResultWidget)
 	{
 		RoundResultWidget = CreateWidget<UUserWidget>(this, RoundResultWidgetClass);
 	}
-	if (RoundResultWidget && !RoundResultWidget->IsInViewport())
+
+	if (!RoundResultWidget)
+	{
+		return;
+	}
+
+	if (!RoundResultWidget->IsInViewport())
 	{
 		RoundResultWidget->AddToViewport(10);
-
-		if (InGameScoreWidget)
-		{
-			InGameScoreWidget->SetVisibility(ESlateVisibility::Hidden);
-		}
-
-
-		UFPResultWidget* RoundUI = Cast<UFPResultWidget>(RoundResultWidget);
-		if (RoundUI)
-		{
-			RoundUI->UpdateRoundResult();
-		}
-		FInputModeUIOnly InputMode;
-		InputMode.SetWidgetToFocus(RoundResultWidget->TakeWidget());
-		SetInputMode(InputMode);
-		bShowMouseCursor = true;
 	}
+
+	if (InGameScoreWidget)
+	{
+		InGameScoreWidget->SetVisibility(ESlateVisibility::Hidden);
+	}
+
+	if (UFPResultWidget* RoundUI = Cast<UFPResultWidget>(RoundResultWidget))
+	{
+		RoundUI->RedTeamScore = InRedTeamScore;
+		RoundUI->BlueTeamScore = InBlueTeamScore;
+		RoundUI->OnResultUpdated();
+	}
+
+	FInputModeUIOnly InputMode;
+	InputMode.SetWidgetToFocus(RoundResultWidget->TakeWidget());
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
 }
 
 void AFPPlayerController::Server_RestoreCharacter_Implementation(FName SavedID, TSubclassOf<APawn> SavedClass)
