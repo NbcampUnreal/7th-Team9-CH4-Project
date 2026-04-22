@@ -5,6 +5,9 @@
 #include "Components/Button.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/Engine.h"
+#include "Game/FPGameInstance.h"
+#include "Game/FPGameState.h"
+#include "Player/FPPlayerController.h"
 
 void UFPScoreResultWidget::NativeConstruct()
 {
@@ -25,8 +28,38 @@ void UFPScoreResultWidget::NativeConstruct()
 	}
 	if (Btn_PlayAgain)
 	{
-		Btn_PlayAgain->OnClicked.AddDynamic(this, &UFPScoreResultWidget::OnPlayAgainClicked); // 다시 시작 버튼
+		Btn_PlayAgain->OnClicked.AddDynamic(this, &UFPScoreResultWidget::OnBackToLobbyClicked); // 다시 시작 버튼
 	}
+
+	FFPGameResultData InitialData;
+	const FString MapName = GetWorld() ? GetWorld()->GetMapName() : FString();
+	const bool bIsResultMap = MapName.Contains(TEXT("Result"));
+
+	if (AFPGameState* GS = GetWorld() ? GetWorld()->GetGameState<AFPGameState>() : nullptr)
+	{
+		if (bIsResultMap)
+		{
+			InitialData.BlueTeamTotalScore = GS->BlueTotalScore;
+			InitialData.RedTeamTotalScore = GS->RedTotalScore;
+		}
+		else
+		{
+			InitialData.BlueTeamTotalScore = GS->BlueTeamScore;
+			InitialData.RedTeamTotalScore = GS->RedTeamScore;
+		}
+	}
+
+	if (InitialData.BlueTeamTotalScore == 0 && InitialData.RedTeamTotalScore == 0)
+	{
+		if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
+		{
+			InitialData.BlueTeamTotalScore = GI->SaveBlueScore;
+			InitialData.RedTeamTotalScore = GI->SaveRedScore;
+		}
+	}
+
+	InitialData.bBlueTeamWin = (InitialData.BlueTeamTotalScore > InitialData.RedTeamTotalScore);
+	SetGameResultData(InitialData);
 }
 
 void UFPScoreResultWidget::SetGameResultData(const FFPGameResultData& InResultData)
@@ -47,14 +80,26 @@ void UFPScoreResultWidget::SetGameResultData(const FFPGameResultData& InResultDa
 
 void UFPScoreResultWidget::OnBackToLobbyClicked()
 {
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, TEXT("로비로 돌아가기 버튼 클릭됨")); //로비 구현전 임시 확인버튼
-	}
 	APlayerController* OwningPlayer = GetOwningPlayer();
-	if (OwningPlayer)
+	if (!OwningPlayer || !OwningPlayer->GetWorld())
 	{
-		OwningPlayer->ClientTravel("/Game/Maps/L_Lobby.L_Lobby", TRAVEL_Absolute); // 로비 경로 입력
+		return;
+	}
+
+	if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
+	{
+		GI->SaveCurrentRound = 0;
+		GI->SaveBlueScore = 0;
+		GI->SaveRedScore = 0;
+	}
+
+	if (AFPPlayerController* FPPC = Cast<AFPPlayerController>(OwningPlayer))
+	{
+		FPPC->ServerRequestReturnToLobbyUI();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("OnBackToLobbyClicked: OwningPlayer를 FPPlayerController로 캐스팅 실패"));
 	}
 }
 
@@ -75,9 +120,9 @@ void UFPScoreResultWidget::OnPlayAgainClicked()
 
 void UFPScoreResultWidget::UpdataUI()
 {
-	// 1000 단위에 ,(콤마) 찍음
-	if (Text_BlueTeamScore) Text_BlueTeamScore->SetText(FText::AsNumber(CurrentResultData.BlueTeamTotalScore)); 
-	if (Text_RedTeamScore) Text_RedTeamScore->SetText(FText::AsNumber(CurrentResultData.RedTeamTotalScore));
+	// 애니메이션 시작값(0점)으로 먼저 표시
+	if (Text_BlueTeamScore) Text_BlueTeamScore->SetText(FText::AsNumber(FMath::RoundToInt(DisplayBlueScore)));
+	if (Text_RedTeamScore) Text_RedTeamScore->SetText(FText::AsNumber(FMath::RoundToInt(DisplayRedScore)));
 
 	UpdatePlayerList(VBox_BluePlayerList, CurrentResultData.BlueTeamPlayers);
 	UpdatePlayerList(VBox_RedPlayerList, CurrentResultData.RedTeamPlayers);
