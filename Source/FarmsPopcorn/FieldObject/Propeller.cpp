@@ -7,7 +7,8 @@
 APropeller::APropeller()
 {
     PrimaryActorTick.bCanEverTick = false;
-
+    bReplicates = true;
+    
     // 메시 컴포넌트 초기화
     PropellerMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PropellerMesh"));
     RootComponent = PropellerMesh;
@@ -35,6 +36,11 @@ void APropeller::BeginPlay()
 {
     Super::BeginPlay();
 
+    if (!HasAuthority())
+    {
+        return;
+    }
+    
     if (CollisionComponent)
     {
         CollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &APropeller::OnOverlapBegin);
