@@ -388,7 +388,7 @@ void AFPPlayerCharacter::UseWaterBalloon()
                             OtherChar->GetCharacterMovement()->MaxWalkSpeed = 600.f; // 복구
                             OtherChar->Multicast_StopWaterBalloonFreeze();
                         }
-                    }, 10.0f, false);
+                    }, 5.0f, false);
 
                 Multicast_PlayItemEffect(EItemType::WaterBalloon);
                 break;
