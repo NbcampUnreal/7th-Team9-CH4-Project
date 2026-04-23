@@ -369,6 +369,9 @@ void AFPPlayerController::ServerSendChatMessage_Implementation(const FString& Se
 }
 void AFPPlayerController::ClientReceiveChatMessage_Implementation(const FString& SenderName, const FString& Message, EFPTeamID TeamID)
 {
+
+	PendingMessages.Add(FPendingChatMessage(SenderName, Message, TeamID));
+
 	if (OnChatMessageReceived.IsBound())
 	{
 		OnChatMessageReceived.Broadcast(SenderName, Message, TeamID);

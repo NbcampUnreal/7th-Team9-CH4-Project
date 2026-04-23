@@ -24,6 +24,8 @@ void UFPChatWidget::NativeConstruct()
 	{
 		FPC->OnChatMessageReceived.RemoveAll(this);
 		FPC->OnChatMessageReceived.AddUObject(this, &UFPChatWidget::ReceiveMessage);
+
+		CheckPendingMessages();
 	}
 }
 
