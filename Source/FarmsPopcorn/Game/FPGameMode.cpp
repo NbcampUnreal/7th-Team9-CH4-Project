@@ -24,7 +24,7 @@ namespace
 
 	FString GetFinalResultMapPath()
 	{
-		return TEXT("/Game/Maps/L_ScoreResultWidgetTest");
+		return TEXT("/Game/Maps/L_ScoreResultWidget");
 	}
 }
 
@@ -655,7 +655,6 @@ void AFPGameMode::EndRound()
 		}
 	}
 	
-	// ✅ 결과 UI 표시
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
 		AFPPlayerController* PC = Cast<AFPPlayerController>(It->Get());
@@ -682,22 +681,30 @@ void AFPGameMode::StartNextRound()
 	
 	GS->RedTotalScore += GS->RedTeamScore;
 	GS->BlueTotalScore += GS->BlueTeamScore;
-
+ 
 	if (CurrentRound >= MaxRounds)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("=== 게임 종료 (CurrentRound: %d, MaxRounds: %d) ==="), CurrentRound, MaxRounds);
 		
 		const int32 FinalRedTotal = GS->RedTotalScore;
 		const int32 FinalBlueTotal = GS->BlueTotalScore;
-
+		
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			AFPPlayerController* PC = Cast<AFPPlayerController>(It->Get());
+			if (PC)
+			{
+				PC->ClientSyncResultScores(FinalRedTotal, FinalBlueTotal, CurrentRound);
+			}
+		}
+		
 		if (UFPGameInstance* GI = GetGameInstance<UFPGameInstance>())
 		{
-			// 서버 GI에도 최종 점수를 유지해둔다.
 			GI->SaveCurrentRound = CurrentRound;
 			GI->SaveRedScore = FinalRedTotal;
 			GI->SaveBlueScore = FinalBlueTotal;
 		}
-
+		
 		if (LoadingWidgetClass)
 		{
 			for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
@@ -708,24 +715,15 @@ void AFPGameMode::StartNextRound()
 				}
 			}
 		}
-
+		
 		const FString FinalMapPath = GetFinalResultMapPath();
 		FTimerDelegate FinalTravelDelegate = FTimerDelegate::CreateLambda([this, FinalMapPath]()
 		{
+			UE_LOG(LogTemp, Warning, TEXT("✅ 결과 맵으로 ServerTravel: %s"), *FinalMapPath);
 			GetWorld()->ServerTravel(FinalMapPath, true);
 		});
 		GetWorldTimerManager().SetTimer(RoundResultTimerHandle, FinalTravelDelegate, 2.0f, false);
-
-		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-		{
-			AFPPlayerController* PC = Cast<AFPPlayerController>(It->Get());
-			if (PC)
-			{
-				// 각 클라이언트 GI에도 최종 점수를 반영해서 결과 맵에서 읽을 수 있게 한다.
-				PC->ClientSyncResultScores(FinalRedTotal, FinalBlueTotal, CurrentRound);
-				PC->ClientShowFinalResult();
-			}
-		}
+		
 		return;
 	}
 	
@@ -738,25 +736,25 @@ void AFPGameMode::StartNextRound()
 	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("Round 진행: %d / %d"), CurrentRound, MaxRounds);
-
+ 
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
 		AFPPlayerController* PC = Cast<AFPPlayerController>(It->Get());
 		if (PC) PC->ClientHideRoundResult();
 	}
-
+ 
 	RedTeamScore = 0;
 	BlueTeamScore = 0;
 	GS->RedTeamScore = 0;
 	GS->BlueTeamScore = 0;
-
+ 
 	const FString NextRoundPath = GetRoundMapPath(CurrentRound);
 	if (NextRoundPath.IsEmpty())
 	{
 		UE_LOG(LogTemp, Error, TEXT(" 다음 라운드 맵 경로를 찾을 수 없습니다. Round: %d"), CurrentRound);
 		return;
 	}
-
+ 
 	if (LoadingWidgetClass)
 	{
 		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
@@ -771,12 +769,11 @@ void AFPGameMode::StartNextRound()
 			}
 		}
 	}
-
+ 
 	GetWorld()->ServerTravel(NextRoundPath + TEXT("?listen"), true);
 	
 	UE_LOG(LogTemp, Warning, TEXT("=== Round %d 이동 중 ==="), CurrentRound);
 }
-
 void AFPGameMode::ShowRoundTransitionLoading()
 {
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
