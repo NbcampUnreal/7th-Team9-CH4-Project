@@ -1,7 +1,9 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
+#include  "Core/FPTeamID.h"
+#include "Net/UnrealNetwork.h"
 #include "FPPlayerState.generated.h"
 
 UCLASS()
@@ -9,4 +11,56 @@ class FARMSPOPCORN_API AFPPlayerState : public APlayerState
 {
 	GENERATED_BODY()
 	
+public:
+	AFPPlayerState();
+	
+	virtual void BeginPlay() override;
+	virtual void CopyProperties(APlayerState* PlayerState) override;
+
+#pragma region Character Ready
+	UFUNCTION(Server, Reliable)
+	void Server_SetReady(bool bNewReadyState);
+	
+	UPROPERTY(BlueprintReadWrite, Replicated, Category = "PlayerState")
+	bool bIsReady = false;	
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetCharacterIndex(int32 NewIndex);
+private:
+	FTimerHandle ReadyCheckDelayHandle;
+	
+#pragma endregion 
+	
+	
+#pragma region Character Setting //캐릭터설정
+	public:
+    	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Team")
+    	EFPTeamID TeamID = EFPTeamID::None;
+	UFUNCTION()
+	void OnRep_CustomPlayerName();
+
+	UPROPERTY(ReplicatedUsing = OnRep_CustomPlayerName)
+	FString CustomPlayerName;
+	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Character")
+	FName AssignedCharacterID;    
+	//  할당된 캐릭터 클래스
+	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Character")
+	TSubclassOf<APawn> AssignedCharacterClass;    
+	//  할당된 캐릭터 이름 (UI 표시용)
+	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Character")
+	FString AssignedCharacterName;    
+	//  할당된 캐릭터 아이콘 (UI 표시용)
+	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Character")
+	TSoftObjectPtr<UTexture2D> AssignedCharacterIcon;
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Character")
+	int32 CharacterIndex = 0;
+	
+#pragma endregion 	//캐릭터 이름 설정 끝
+	
+public:
+	UFUNCTION(BlueprintCallable, Category = "Team")
+	EFPTeamID GetTeamID() const { return TeamID; }
+	
+	
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 };

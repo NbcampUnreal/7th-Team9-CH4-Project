@@ -1,23 +1,314 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "InputActionValue.h"
+#include "Components/BoxComponent.h"
+// 탑 쌓기 감지용 박스 컴포넌트 사용하려면 필요
 #include "FPPlayerCharacter.generated.h"
+
+
+class UCameraComponent;
+class USpringArmComponent;
+class UInputMappingContext;
+class UInputAction;
+class UNiagaraSystem;
+class UNiagaraComponent;
+class USoundBase;
+
+UENUM(BlueprintType)
+enum class EItemType : uint8
+{
+    None        UMETA(DisplayName = "None"),
+    Fan         UMETA(DisplayName = "선풍기"),
+    Magnet      UMETA(DisplayName = "자석"),
+    WaterBalloon UMETA(DisplayName = "물풍선"),
+    WaterBalloonFreeze UMETA(DisplayName = "물풍선 가두기"),
+    SweetPotato UMETA(DisplayName = "고구마"),   // 이중점프
+};
 
 UCLASS()
 class FARMSPOPCORN_API AFPPlayerCharacter : public ACharacter
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
+
+#pragma region ACharacter Override
 
 public:
-	AFPPlayerCharacter();
+    AFPPlayerCharacter();
+
+    virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+
+    virtual void BeginPlay() override;
+
+    virtual void PossessedBy(AController* NewController) override; //추가사항
+    virtual void OnRep_Controller() override; //추가사항
+
+    // 착지 시 점프 카운트 초기화
+    virtual void Landed(const FHitResult& Hit) override;
+
+#pragma endregion
+
+#pragma region Components (카메라/스프링암)
+
+public:
+    FORCEINLINE USpringArmComponent* GetSpringArm() const
+    {
+        return SpringArm;
+    }
+    FORCEINLINE UCameraComponent* GetCamera() const
+    {
+        return Camera;
+    }
 
 protected:
-	virtual void BeginPlay() override;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "PR|Components")
+    TObjectPtr<USpringArmComponent> SpringArm;
 
-public:	
-	virtual void Tick(float DeltaTime) override;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "PR|Components")
+    TObjectPtr<UCameraComponent> Camera;
 
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+#pragma endregion
 
+#pragma region Input (Enhanced Input)
+
+private:
+    void HandleMoveInput(const FInputActionValue& InValue);
+    void HandleLookInput(const FInputActionValue& InValue);
+    void HandleJumpInput();       // 이중점프 처리
+    void HandleItemInput();       // Z키 아이템 사용
+    void TryApplyInputMappingContext(); //추가사항
+    bool bInputMappingApplied = false; //추가사항
+
+protected:
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "PR|Input")
+    TObjectPtr<UInputMappingContext> InputMappingContext;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "PR|Input")
+    TObjectPtr<UInputAction> MoveAction;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "PR|Input")
+    TObjectPtr<UInputAction> LookAction;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "PR|Input")
+    TObjectPtr<UInputAction> JumpAction;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+        Category = "PR|Input")
+    TObjectPtr<UInputAction> ItemAction;    // Z키
+
+#pragma endregion
+
+    // =========================================================
+#pragma region Jump (이중점프 - 고구마 아이템 연동)
+// =========================================================
+private:
+    // 현재 점프 횟수
+    int32 JumpCount = 0;
+
+    // 최대 점프 횟수 (기본 1, 고구마 아이템 시 2)
+    UPROPERTY(VisibleAnywhere, Replicated,
+        Category = "PR|Jump")
+    int32 MaxJumpCount = 1;
+
+#pragma endregion
+
+    // =========================================================
+#pragma region Item (아이템 시스템)
+// =========================================================
+public:
+    // 아이템 박스 먹을 때 호출
+    UFUNCTION(BlueprintCallable)
+    void PickupItem(EItemType NewItem);
+
+    // 현재 보유 아이템 반환
+    UFUNCTION(BlueprintPure)
+    EItemType GetCurrentItem() const { return CurrentItem; }
+
+    // [추가] 머리 위에 뜰 아이템 메시 컴포넌트
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PR|Item")
+    TObjectPtr<UStaticMeshComponent> ItemVisualMesh;
+
+    UPROPERTY(EditDefaultsOnly, Category = "PR|Item")
+    TObjectPtr<UStaticMesh> Mesh_Fan;
+
+    UPROPERTY(EditDefaultsOnly, Category = "PR|Item")
+    TObjectPtr<UStaticMesh> Mesh_Magnet;
+
+    UPROPERTY(EditDefaultsOnly, Category = "PR|Item")
+    TObjectPtr<UStaticMesh> Mesh_WaterBalloon;
+
+    UPROPERTY(EditDefaultsOnly, Category = "PR|Item")
+    TObjectPtr<UStaticMesh> Mesh_SweetPotato;
+
+    UPROPERTY(VisibleAnywhere, Category = "PR|Item")
+    TObjectPtr<UStaticMeshComponent> ItemDisplayMesh;
+
+    virtual void Jump() override;
+
+private:
+    // 아이템 사용 실제 처리 (서버에서 실행)
+    UFUNCTION(Server, Reliable)
+    void Server_UseItem();
+
+    // 모든 클라이언트에 아이템 효과 알림
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_PlayItemEffect(EItemType UsedItem);
+
+    // 물풍선 감금 전용 멀티캐스트 (OtherChar에서 직접 호출)
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_StartWaterBalloonFreeze();
+
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_StopWaterBalloonFreeze();
+
+    // 아이템별 효과 함수들
+    void UseFan();          // 선풍기: 주변 적 날려버림
+    void UseMagnet();       // 자석: 앞 적 끌어당김
+    void UseWaterBalloon(); // 물풍선: 2초간 이동 불가
+    void UseWaterBalloonFreeze();
+    void UseSweetPotato();  // 고구마: 이중점프 활성화
+
+protected:
+    // 현재 보유 아이템 (서버→클라 동기화)
+    UPROPERTY(ReplicatedUsing = OnRep_CurrentItem,
+        BlueprintReadOnly, Category = "PR|Item")
+    EItemType CurrentItem = EItemType::None;
+
+    // 아이템별 사운드를 저장할 맵 (에디터에서 할당)
+    UPROPERTY(EditAnywhere, Category = "Item|Sound")
+    TMap<EItemType, USoundBase*> ItemSounds;
+
+    UFUNCTION()
+    void OnRep_CurrentItem();   // 아이템 UI 갱신 트리거
+
+    //아이템 사용 함수 선언
+    void UseCurrentItem();
+
+    //고구마 효과 지속시간을 관리할 타이머 핸들 선언
+    FTimerHandle SweetPotatoTimerHandle;
+
+    // 물풍선 정지 해제 타이머
+    FTimerHandle WaterBalloonFreezeTimerHandle;
+
+    // 아이템 종류별로 나이아가라 에셋을 매칭해서 담아둘 바구니(Map)
+    UPROPERTY(EditAnywhere, Category = "Item|Effect")
+    TMap<EItemType, TObjectPtr<UNiagaraSystem>> ItemEffects;
+
+    UPROPERTY(EditAnywhere, Category = "Item|Effect")
+    class UNiagaraSystem* WaterBalloonEffect; // 에디터에서 할당할 물풍선 에셋
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effect")
+    TObjectPtr<UNiagaraComponent> JumpSmokeComponent;
+
+#pragma endregion
+
+    // =========================================================
+#pragma region Character Select (캐릭터 선택 - 11종)
+// =========================================================
+public:
+    // 선택된 캐릭터 인덱스 설정 (0~10)
+    UFUNCTION(Server, Reliable)
+    void Server_SetCharacterIndex(int32 InIndex);
+    virtual void OnRep_PlayerState() override;
+
+protected:
+    // 캐릭터 인덱스 (서버→클라 동기화)
+    UPROPERTY(ReplicatedUsing = OnRep_CharacterIndex,
+        BlueprintReadOnly, Category = "PR|Character")
+    int32 CharacterIndex = 0;
+
+    UFUNCTION()
+    void OnRep_CharacterIndex();    // 메시 교체 트리거
+
+    // 에디터에서 11개 스켈레탈 메시 등록
+    UPROPERTY(EditDefaultsOnly, Category = "PR|Character")
+    TArray<TObjectPtr<USkeletalMesh>> CharacterMeshes;
+
+    //각 캐릭터 인덱스에 대응하는 애니메이션 블루프린트 클래스 배열
+    UPROPERTY(EditDefaultsOnly, Category = "PR|Character")
+    TArray<TSubclassOf<UAnimInstance>> CharacterAnimClassArray;
+private:
+    void SyncCharacterVisualFromPlayerState();
+
+#pragma endregion
+
+#pragma region Stack (탑 쌓기)
+
+protected:
+    //머리 위 감지 박스
+    UPROPERTY(EditDefaultsOnly, Category = "FP|Stack")
+    TObjectPtr<UBoxComponent> HeadDetectBox;
+
+    //내 위에 올라간 캐릭터들(여러 명 가능)
+    UPROPERTY(Replicated)
+    TArray<TObjectPtr<AFPPlayerCharacter>> RiderCharacters;
+
+    // 내가 올라탄 캐릭터 (내 아래)
+    UPROPERTY(Replicated)
+    TObjectPtr<AFPPlayerCharacter> MountedCharacter;
+
+public:
+    UFUNCTION(Server, Reliable)
+    void Server_MountOn(AFPPlayerCharacter* UnderCharacter);
+
+    UFUNCTION(Server, Reliable)
+    void Server_Dismount();
+
+private:
+    UFUNCTION()
+    void OnHeadBoxBeginOverlap(
+        UPrimitiveComponent* OverlappedComp,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex,
+        bool bFromSweep,
+        const FHitResult& SweepResult);
+
+    UFUNCTION()
+    void OnHeadBoxEndOverlap(
+        UPrimitiveComponent* OverlappedComp,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex);
+
+#pragma endregion
+
+
+    // =========================================================
+#pragma region Network
+// =========================================================
+public:
+    virtual void GetLifetimeReplicatedProps(
+        TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+#pragma endregion
+	
+#pragma region SavePointLoaction(세이브 포인트 위치 저장)
+	void SetSavePointLocation(FVector NewLocation, FRotator NewRotator)
+	{
+		SaveLocation = NewLocation;
+		SaveRotation = NewRotator;
+	}
+	
+	FVector GetSaveLocation() { return SaveLocation; }
+	FRotator GetSaveRotation() { return SaveRotation; }
+
+private:
+
+	FVector SaveLocation;
+	FRotator SaveRotation;
+
+#pragma endregion
+
+public:
+	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Name")
+	FString CurrentName;
 };
+
