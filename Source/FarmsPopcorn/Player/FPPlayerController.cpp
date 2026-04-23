@@ -50,7 +50,26 @@ void AFPPlayerController::BeginPlay()
 			UE_LOG(LogTemp, Log, TEXT("메뉴 맵 진입 (%s): 점수판을 생성하지 않습니다."), *MapName);
 		}
 	}
-	
+	if (IsLocalController())
+	{
+		FString MapName = GetWorld()->GetMapName();
+		
+		bool bIsResultMap = MapName.Contains(TEXT("L_ScoreResultWidget"));
+		if (bIsResultMap && FinalResultWidgetClass)
+		{
+			FTimerHandle ResultWidgetTimer;
+			GetWorldTimerManager().SetTimer(ResultWidgetTimer, [this]()
+			{
+				UFPScoreResultWidget* ResultWidget = 
+					CreateWidget<UFPScoreResultWidget>(this, FinalResultWidgetClass);
+				if (ResultWidget)
+				{
+					ResultWidget->AddToViewport(100);
+					// ... 입력 모드 설정 ...
+				}
+			}, 0.2f, false);
+			return;  // 다른 UI는 생성 안 함
+		}
 }
 
 void AFPPlayerController::BeginPlayingState()
@@ -380,6 +399,32 @@ void AFPPlayerController::ClientReceiveChatMessage_Implementation(const FString&
 }
 void AFPPlayerController::ClientShowFinalResult_Implementation()
 {
+	if (!IsLocalController() || !FinalResultWidgetClass)
+	{
+		return;
+	}
+	
+	if (!FinalResultWidget)
+	{
+		FinalResultWidget = CreateWidget<UFPScoreResultWidget>(this, FinalResultWidgetClass);
+	}
+
+	if (FinalResultWidget)
+	{
+		FinalResultWidget->AddToViewport(100);
+        
+		// 입력 모드 설정
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(FinalResultWidget->TakeWidget());
+		SetInputMode(InputMode);
+		bShowMouseCursor = true;
+        
+		// 게임 점수판 숨김
+		if (InGameScoreWidget)
+		{
+			InGameScoreWidget->SetVisibility(ESlateVisibility::Hidden);
+		}
+	}
 
 }
 
