@@ -770,7 +770,7 @@ void AFPGameMode::StartNextRound()
 		}
 	}
  
-	GetWorld()->ServerTravel(NextRoundPath + TEXT("?listen"), true);
+	GetWorld()->ServerTravel(NextRoundPath, true);
 	
 	UE_LOG(LogTemp, Warning, TEXT("=== Round %d 이동 중 ==="), CurrentRound);
 }

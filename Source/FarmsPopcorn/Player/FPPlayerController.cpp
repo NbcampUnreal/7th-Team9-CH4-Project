@@ -70,6 +70,7 @@ void AFPPlayerController::BeginPlay()
 			}, 0.2f, false);
 			return;  // 다른 UI는 생성 안 함
 		}
+	}
 }
 
 void AFPPlayerController::BeginPlayingState()
