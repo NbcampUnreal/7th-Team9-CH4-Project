@@ -10,6 +10,13 @@ ASpikeRoller::ASpikeRoller()
     
     RollerMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RollerMesh"));
     RootComponent = RollerMesh;
+    
+}
+void ASpikeRoller::BeginPlay()
+{
+    Super::BeginPlay();
+    // 에디터에 배치된 시점의 회전값을 저장
+    InitialRotation = GetActorRotation();
 }
 
 void ASpikeRoller::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -21,12 +28,9 @@ void ASpikeRoller::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
 void ASpikeRoller::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
-    if (HasAuthority())
-    {
-        ElapsedTime += DeltaTime;
-    }
     
     float Direction = bReverseRotation ? -1.0f : 1.0f;
-    float TotalRotation = ElapsedTime * RotationSpeed * Direction;
-    SetActorRotation(FRotator(0.f, TotalRotation, 0.f));
+    float RotationDelta = RotationSpeed * Direction * DeltaTime;
+    
+    AddActorLocalRotation(FRotator(0.f, RotationDelta, 0.f));
 }

@@ -11,10 +11,12 @@ class FARMSPOPCORN_API ASpikeRoller : public AActor
 
 public:
     ASpikeRoller();
+   
     virtual void Tick(float DeltaTime) override;
-
+private:
+    FRotator InitialRotation;
 protected:
-
+    virtual void BeginPlay() override;
     UPROPERTY(VisibleAnywhere, Category = "Components")
     UStaticMeshComponent* RollerMesh;
     
